@@ -1,0 +1,29 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Statistics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h2>{{ user.nickname }}님의 성적 통계</h2>
+    <canvas id="scoreChart" width="400" height="200"></canvas>
+    <script>
+        const ctx = document.getElementById('scoreChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: {{ labels|safe }},
+                datasets: [{
+                    label: '점수 변화',
+                    data: {{ scores|safe }},
+                    fill: false,
+                    borderColor: 'blue',
+                    tension: 0.1
+                }]
+            }
+        });
+    </script>
+</body>
+</html>

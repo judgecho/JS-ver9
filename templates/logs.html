@@ -1,0 +1,13 @@
+
+<!DOCTYPE html>
+<html>
+<head><title>수정 로그</title></head>
+<body>
+    <h2>시험 수정 로그</h2>
+    <ul>
+    {% for log in logs %}
+        <li>[{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}] {{ log.action }}</li>
+    {% endfor %}
+    </ul>
+</body>
+</html>

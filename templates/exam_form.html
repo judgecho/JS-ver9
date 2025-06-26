@@ -1,0 +1,11 @@
+<form method="POST">
+  {% for q in questions %}
+    <p>문항 {{ loop.index }}:</p>
+    <label><input type="radio" name="{{ q.id }}" value="1"> {{ q.choice1 }}</label><br>
+    <label><input type="radio" name="{{ q.id }}" value="2"> {{ q.choice2 }}</label><br>
+    <label><input type="radio" name="{{ q.id }}" value="3"> {{ q.choice3 }}</label><br>
+    <label><input type="radio" name="{{ q.id }}" value="4"> {{ q.choice4 }}</label><br>
+    <label><input type="radio" name="{{ q.id }}" value="5"> {{ q.choice5 }}</label><br><br>
+  {% endfor %}
+  <button type="submit">제출</button>
+</form>

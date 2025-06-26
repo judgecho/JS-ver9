@@ -1,0 +1,38 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>시험 편집</title>
+    <style>
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ccc; padding: 8px; }
+        th { background-color: #f5f5f5; }
+    </style>
+</head>
+<body>
+    <h2>시험 편집: {{ exam.title }}</h2>
+    <form method="post">
+        <label>시험 제목: <input type="text" name="title" value="{{ exam.title }}"></label><br>
+        <label>카테고리: 
+            <select name="category">
+                <option value="중간고사" {% if exam.category == '중간고사' %}selected{% endif %}>중간고사</option>
+                <option value="기말고사" {% if exam.category == '기말고사' %}selected{% endif %}>기말고사</option>
+                <option value="모의고사" {% if exam.category == '모의고사' %}selected{% endif %}>모의고사</option>
+            </select>
+        </label><br><br>
+        <table>
+            <tr><th>번호</th><th>보기(1~5)</th><th>정답</th><th>배점</th></tr>
+            {% for q in questions %}
+            <tr>
+                <td><input type="number" name="number_{{ q.id }}" value="{{ q.question_number }}"></td>
+                <td><input type="text" name="options_{{ q.id }}" value="{{ q.options }}"></td>
+                <td><input type="text" name="answer_{{ q.id }}" value="{{ q.correct_answer }}"></td>
+                <td><input type="number" name="score_{{ q.id }}" value="{{ q.score }}"></td>
+            </tr>
+            {% endfor %}
+        </table>
+        <br>
+        <button type="submit">저장</button>
+    </form>
+</body>
+</html>

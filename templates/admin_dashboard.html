@@ -1,0 +1,40 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h2>시험별 통계</h2>
+    <canvas id="examChart" width="600" height="300"></canvas>
+    <script>
+        const ctx = document.getElementById('examChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: {{ exam_labels|safe }},
+                datasets: [{
+                    label: '평균 점수',
+                    data: {{ exam_averages|safe }},
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'blue',
+                    borderWidth: 1
+                }, {
+                    label: '최고 점수',
+                    data: {{ exam_maxes|safe }},
+                    backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                    borderColor: 'red',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
