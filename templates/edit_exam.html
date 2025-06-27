@@ -2,490 +2,157 @@
 <html>
 <head>
     <title>시험 편집</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <style>
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 12px 8px; vertical-align: middle; }
-        th { background-color: #f8f9fa; font-weight: 600; text-align: center; }
-        
-        /* 반응형 테이블 */
-        @media (max-width: 768px) {
-          table { font-size: 14px; }
-          th, td { padding: 8px 4px; }
+        .question-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
         }
-
-        .choice-radio { margin-right: 4px; }
-        .answer-label { font-weight: bold; color: #007bff; }
-        .add-btn { margin: 12px 0; padding: 8px 18px; background: #28a745; color: #fff; border: none; border-radius: 5px; font-size: 1em; cursor: pointer; }
-        .add-btn:hover { background: #218838; }
-        .del-btn { padding: 4px 10px; background: #dc3545; color: #fff; border: none; border-radius: 4px; font-size: 0.95em; cursor: pointer; margin-left: 8px; }
-        .del-btn:hover { background: #b52a37; }
-        .insert-btn { padding: 4px 8px; background: #28a745; color: #fff; border: none; border-radius: 4px; font-size: 0.8em; cursor: pointer; margin-left: 4px; }
-        .insert-btn:hover { background: #218838; }
-        
-        /* 번호 입력 필드 스타일 */
+        .question-table th, .question-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        .question-table th {
+            background-color: #f2f2f2;
+        }
         .number-input {
-          width: 80px;
-          height: 45px;
-          font-size: 22px;
-          font-weight: bold;
-          text-align: center;
-          border: 2px solid #007bff;
-          border-radius: 8px;
-          background: linear-gradient(145deg, #f8faff 60%, #e3eefd 100%);
-          color: #007bff;
-          transition: all 0.3s ease;
+            width: 60px;
+            text-align: center;
         }
-        
-        .number-input:focus {
-          outline: none;
-          border-color: #0056b3;
-          background: #fff;
-          box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
-        }
-        
-        /* 배점 입력 필드 스타일 */
         .score-input {
-          width: 90px;
-          height: 45px;
-          font-size: 22px;
-          font-weight: bold;
-          text-align: center;
-          border: 2px solid #28a745;
-          border-radius: 8px;
-          background: linear-gradient(145deg, #f8fff8 60%, #e8f5e8 100%);
-          color: #28a745;
-          transition: all 0.3s ease;
+            width: 80px;
+            text-align: center;
         }
-        
-        .score-input:focus {
-          outline: none;
-          border-color: #1e7e34;
-          background: #fff;
-          box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+        .choice-input {
+            width: 200px;
         }
-        
-        /* 수동 변경된 배점 스타일 */
-        .score-input.manually-changed {
-          background: #fff3cd !important;
-          border-color: #ffc107 !important;
-          color: #856404 !important;
-        }
-        
-        /* 정답 입력 필드 스타일 */
-        .answer-input {
-          width: 60px;
-          height: 40px;
-          font-size: 20px;
-          font-weight: bold;
-          text-align: center;
-          border: 2px solid #dc3545;
-          border-radius: 8px;
-          background: linear-gradient(145deg, #fff8f8 60%, #ffe8e8 100%);
-          color: #dc3545;
-          transition: all 0.3s ease;
-        }
-        
-        .answer-input:focus {
-          outline: none;
-          border-color: #c82333;
-          background: #fff;
-          box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
-        }
-        
-        /* 반응형: 모바일에서 입력 필드 크기 조정 */
-        @media (max-width: 768px) {
-          .number-input, .score-input {
-            width: 60px;
-            height: 40px;
-            font-size: 20px;
-          }
-        }
-        .auto-score-btn { 
-          margin: 12px 0 12px 12px; 
-          padding: 8px 18px; 
-          background: #17a2b8; 
-          color: #fff; 
-          border: none; 
-          border-radius: 5px; 
-          font-size: 1em; 
-          cursor: pointer; 
-          font-weight: bold;
-        }
-        .auto-score-btn:hover { background: #138496; }
-        .manually-changed {
-          background-color: #fff3cd !important;
-          border: 2px solid #ffc107 !important;
-          font-weight: bold;
-        }
-        .choice-btn {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 80px;
-          height: 50px;
-          border-radius: 25px;
-          border: 3px solid #007bff;
-          text-align: center;
-          font-size: 1.8em;
-          cursor: pointer;
-          user-select: none;
-          transition: all 0.3s ease;
-          margin: 0 8px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-          background: linear-gradient(145deg, #f8faff 60%, #e3eefd 100%);
-          font-weight: 700;
-          letter-spacing: 1px;
-        }
-        .choice-btn.selected {
-          background: linear-gradient(145deg, #dc3545 60%, #c82333 100%);
-          color: #fff;
-          border: 3px solid #c82333;
-          box-shadow: 0 6px 20px rgba(220,53,69,0.4);
-          transform: translateY(-2px);
-        }
-        
-        .choice-btn.unselected {
-          background: linear-gradient(145deg, #f8faff 60%, #e3eefd 100%);
-          color: #007bff;
-        }
-        
-        .choice-btn:hover, .choice-btn:focus {
-          border: 3px solid #339dff;
-          box-shadow: 0 6px 16px rgba(0,123,255,0.25);
-          background: linear-gradient(145deg, #e3f0ff 60%, #cbe2ff 100%);
-          color: #0056b3;
-          transform: translateY(-1px);
-        }
-        
-        /* 반응형: 모바일에서 보기 버튼 크기 조정 */
-        @media (max-width: 768px) {
-          .choice-btn {
-            width: 60px;
-            height: 40px;
-            border-radius: 20px;
-            font-size: 1.4em;
-            margin: 0 4px;
-          }
-        }
-        
-        /* 보기 컨테이너 반응형 */
         .choices-edit {
-          display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
-          justify-content: center;
-          align-items: center;
-          padding: 10px 0;
-        }
-        
-        @media (max-width: 768px) {
-          .choices-edit {
+            display: flex;
+            flex-direction: column;
             gap: 4px;
-            padding: 8px 0;
-          }
+        }
+        .action-buttons {
+            margin: 20px 0;
+        }
+        .action-buttons button {
+            margin-right: 10px;
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .action-buttons button:hover {
+            background-color: #0056b3;
+        }
+        .change-numbers-btn {
+            background-color: #28a745 !important;
+        }
+        .change-numbers-btn:hover {
+            background-color: #1e7e34 !important;
         }
     </style>
 </head>
 <body>
-    <h2>시험 편집: {{ exam.title }}</h2>
-    <form method="post">
-        <label>시험 제목: <input type="text" name="title" value="{{ exam.title }}"></label><br>
-        <label>시험 설명: <input type="text" name="description" value="{{ exam.description or '' }}"></label><br>
-        <label>카테고리: 
-            <select name="category">
-                <option value="중간고사" {% if exam.category == '중간고사' %}selected{% endif %}>중간고사</option>
-                <option value="기말고사" {% if exam.category == '기말고사' %}selected{% endif %}>기말고사</option>
-                <option value="모의고사" {% if exam.category == '모의고사' %}selected{% endif %}>모의고사</option>
-            </select>
-        </label><br>
-        <label>시험 시간(분): <input type="number" name="duration" value="{{ exam.duration or 60 }}"></label><br>
-        <label>총점: <input type="number" name="total_score" value="{{ exam.total_score or 100 }}"></label><br><br>
-        <button type="button" class="add-btn" onclick="addQuestion()">문항 추가</button>
-        <button type="button" class="add-btn" onclick="reorderQuestions()" style="background: #17a2b8;">번호 변경</button>
-        <div style="margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 5px;">
-            <strong>현재 총점: <span id="totalScore">0</span>점</strong>
-            <span id="scoreWarning" style="color: #dc3545; margin-left: 10px; display: none;">⚠️ 총점이 100점이 아닙니다!</span>
-        </div>
+    <div class="container">
+        <h1>시험 편집: {{ exam.title }}</h1>
         
-        <table id="questionTable">
-            <tr><th>번호</th><th>보기 선택</th><th>정답</th><th>배점</th><th>작업</th></tr>
-            {% for q in questions %}
-            <tr data-qid="{{ q.id }}">
-                <td style="text-align: center;">
-                    <input type="number" name="number_{{ q.id }}" value="{{ q.question_number or loop.index }}" class="number-input">
-                </td>
-                <td>
-                  <div class="choices-edit">
-                    {% for i in range(1,6) %}
-                      <div style="display:flex;align-items:center;gap:4px;">
-                        <input type="radio" id="answer_{{q.id}}_{{i}}" name="answer_{{q.id}}" value="{{i}}" 
-                               {% if q.answer == i %}checked{% endif %} style="display:none;"
-                               onchange="updateAnswerDisplay({{q.id}})">
-                        <label for="answer_{{q.id}}_{{i}}" 
-                               class="choice-btn {% if q.answer == i %}selected{% else %}unselected{% endif %}" 
-                               onclick="selectAnswer({{q.id}}, {{i}})">
-                               {{ i }}
-                        </label>
-                        {% if i == 1 %}
-                          <input type="hidden" name="choice{{i}}_{{q.id}}" value="{{ q.choice1 or '' }}">
-                        {% elif i == 2 %}
-                          <input type="hidden" name="choice{{i}}_{{q.id}}" value="{{ q.choice2 or '' }}">
-                        {% elif i == 3 %}
-                          <input type="hidden" name="choice{{i}}_{{q.id}}" value="{{ q.choice3 or '' }}">
-                        {% elif i == 4 %}
-                          <input type="hidden" name="choice{{i}}_{{q.id}}" value="{{ q.choice4 or '' }}">
-                        {% elif i == 5 %}
-                          <input type="hidden" name="choice{{i}}_{{q.id}}" value="{{ q.choice5 or '' }}">
-                        {% endif %}
-                      </div>
-                    {% endfor %}
-                  </div>
-                </td>
-                <td style="text-align: center;">
-                    <input type="number" name="direct_answer_{{ q.id }}" value="{{ q.answer or '' }}" 
-                           min="1" max="5" class="answer-input" 
-                           onchange="syncAnswerInput({{ q.id }}, this.value)"
-                           placeholder="1-5">
-                </td>
-                <td style="text-align: center;">
-                    <input type="number" name="score_{{ q.id }}" value="{{ q.score }}" class="score-input" 
-                           step="0.01" min="0" max="100"
-                           onblur="adjustOtherScores(this)" onchange="adjustOtherScores(this)">
-                </td>
-                <td>
-                    <button type="button" class="del-btn" onclick="deleteQuestion({{ q.id }})">삭제</button>
-                    <button type="button" class="insert-btn" onclick="insertQuestionAfter({{ loop.index0 }})">↓추가</button>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
-        <br>
-        <button type="submit">저장</button>
-    </form>
-    <form id="addQuestionForm" method="post" style="display:none;">
-      <input type="hidden" name="add_question" value="1">
-    </form>
-    <form id="deleteQuestionForm" method="post" style="display:none;">
-      <input type="hidden" name="delete_question_id" id="delete_question_id">
-    </form>
-    <form id="insertQuestionForm" method="post" style="display:none;">
-      <input type="hidden" name="insert_question" value="1">
-      <input type="hidden" name="insert_position" id="insert_position">
-    </form>
-    <form id="reorderQuestionsForm" method="post" style="display:none;">
-      <input type="hidden" name="reorder_questions" value="1">
-    </form>
-    <script>
-      function addQuestion() {
-        document.getElementById('addQuestionForm').submit();
-      }
-      function deleteQuestion(qid) {
-        if(confirm('정말 삭제하시겠습니까?')) {
-          document.getElementById('delete_question_id').value = qid;
-          document.getElementById('deleteQuestionForm').submit();
-        }
-      }
-      
-      function insertQuestionAfter(position) {
-        document.getElementById('insert_position').value = position + 1;
-        document.getElementById('insertQuestionForm').submit();
-      }
-      
-      function reorderQuestions() {
-        // 메인 폼에 reorder_questions 히든 필드 추가
-        var mainForm = document.forms[0];
-        var hiddenInput = document.createElement('input');
-        hiddenInput.type = 'hidden';
-        hiddenInput.name = 'reorder_questions';
-        hiddenInput.value = '1';
-        mainForm.appendChild(hiddenInput);
-        
-        // 메인 폼 제출
-        mainForm.submit();
-      }
-      
-      // 정답 선택 함수
-      function selectAnswer(questionId, answerNumber) {
-        // 해당 라디오 버튼 선택
-        var radioButton = document.getElementById('answer_' + questionId + '_' + answerNumber);
-        if(radioButton) {
-          radioButton.checked = true;
-          updateAnswerDisplay(questionId);
-        }
-      }
-      
-      // 정답 표시 업데이트
-      function updateAnswerDisplay(questionId) {
-        // 모든 보기 버튼 스타일 초기화
-        for(var i = 1; i <= 5; i++) {
-          var label = document.querySelector('label[for="answer_' + questionId + '_' + i + '"]');
-          if(label) {
-            label.className = 'choice-btn unselected';
-          }
-        }
-        
-        // 선택된 보기 버튼 스타일 변경
-        var selectedRadio = document.querySelector('input[name="answer_' + questionId + '"]:checked');
-        if(selectedRadio) {
-          var selectedValue = selectedRadio.value;
-          var selectedLabel = document.querySelector('label[for="answer_' + questionId + '_' + selectedValue + '"]');
-          if(selectedLabel) {
-            selectedLabel.className = 'choice-btn selected';
-          }
-          
-          // 정답 입력 필드도 업데이트
-          var answerInput = document.querySelector('input[name="direct_answer_' + questionId + '"]');
-          if(answerInput) {
-            answerInput.value = selectedValue;
-          }
-        }
-      }
-      
-      // 정답 입력 필드에서 보기 버튼 동기화
-      function syncAnswerInput(questionId, value) {
-        if(value >= 1 && value <= 5) {
-          // 해당 라디오 버튼 선택
-          var radioButton = document.getElementById('answer_' + questionId + '_' + value);
-          if(radioButton) {
-            radioButton.checked = true;
-            updateAnswerDisplay(questionId);
-          }
-        } else {
-          // 잘못된 값이면 모든 선택 해제
-          var radios = document.querySelectorAll('input[name="answer_' + questionId + '"]');
-          for(var i = 0; i < radios.length; i++) {
-            radios[i].checked = false;
-          }
-          updateAnswerDisplay(questionId);
-        }
-      }
-      // 총점 계산 및 표시
-      function updateTotalScore() {
-        const scoreInputs = document.querySelectorAll('input[name^="score_"]');
-        let total = 0;
-        scoreInputs.forEach(input => {
-          total += parseFloat(input.value) || 0;
-        });
-        document.getElementById('totalScore').textContent = total.toFixed(2);
-        
-        const warning = document.getElementById('scoreWarning');
-        if(total !== 100) {
-          warning.style.display = 'inline';
-        } else {
-          warning.style.display = 'none';
-        }
-      }
-      
-      // 배점 자동 조정
-      function adjustOtherScores(changedInput) {
-        setTimeout(function() {
-          var scoreInputs = document.querySelectorAll('input[name^="score_"]');
-          var totalInputs = scoreInputs.length;
-          
-          if(totalInputs <= 1) {
-            updateTotalScore();
-            return;
-          }
-          
-          var changedValue = parseFloat(changedInput.value) || 0;
-          
-          // 값 범위 제한
-          if(changedValue > 100) {
-            changedValue = 100;
-            changedInput.value = 100;
-          }
-          if(changedValue < 0) {
-            changedValue = 0;
-            changedInput.value = 0;
-          }
-          
-          // 변경된 필드 표시 (수동 변경임을 표시)
-          changedInput.classList.add('manually-changed');
-          
-          // 수동으로 변경된 필드들의 총점 계산
-          var manualTotal = changedValue;
-          var manualCount = 1;
-          for(var i = 0; i < scoreInputs.length; i++) {
-            if(scoreInputs[i] !== changedInput && scoreInputs[i].classList.contains('manually-changed')) {
-              manualTotal += parseFloat(scoreInputs[i].value) || 0;
-              manualCount++;
-            }
-          }
-          
-          // 자동 조정 대상 필드들 찾기
-          var autoAdjustInputs = [];
-          for(var j = 0; j < scoreInputs.length; j++) {
-            if(!scoreInputs[j].classList.contains('manually-changed')) {
-              autoAdjustInputs.push(scoreInputs[j]);
-            }
-          }
-          
-          if(autoAdjustInputs.length === 0) {
-            updateTotalScore();
-            return;
-          }
-          
-          // 남은 점수를 자동 조정 대상 필드들에 균등 분배
-          var remainingScore = 100 - manualTotal;
-          if(remainingScore < 0) remainingScore = 0;
-          
-          var baseScore = remainingScore / autoAdjustInputs.length;
-          
-          // 점수 할당 (자동 조정 대상만)
-          for(var k = 0; k < autoAdjustInputs.length; k++) {
-            var newScore = baseScore;
-            autoAdjustInputs[k].value = newScore.toFixed(2);
+        <form method="POST">
+            <div>
+                <label>시험 제목:</label>
+                <input type="text" name="title" value="{{ exam.title }}" required>
+            </div>
             
-            // 자동 조정된 필드 스타일 초기화
-            autoAdjustInputs[k].classList.remove('manually-changed');
-          }
-          
-          updateTotalScore();
-        }, 100);
-      }
-      
-      // 배점 자동분배 버튼
-      function autoDistributeScores() {
-        var scoreInputs = document.querySelectorAll('input[name^="score_"]');
-        var total = scoreInputs.length;
-        if(total === 0) return;
+            <div class="action-buttons">
+                <button type="submit" name="change_numbers" class="change-numbers-btn">번호 변경 적용</button>
+                <button type="submit">저장</button>
+            </div>
+            
+            <table class="question-table">
+                <tr>
+                    <th>번호</th>
+                    <th>보기 선택</th>
+                    <th>정답</th>
+                    <th>배점</th>
+                </tr>
+                {% for q in questions %}
+                <tr data-qid="{{ q.id }}">
+                    <td style="text-align: center;">
+                        <input type="number" name="number_{{ q.id }}" value="{{ q.question_number or loop.index }}" class="number-input">
+                    </td>
+                    <td>
+                      <div class="choices-edit">
+                        <div style="display:flex;align-items:center;gap:4px;">
+                          <input type="radio" id="answer_{{q.id}}_1" name="answer_{{q.id}}" value="1" 
+                                 {% if q.answer == '1' %}checked{% endif %}>
+                          <input type="text" name="choice1_{{q.id}}" value="{{ q.choice1 or '' }}" 
+                                 placeholder="보기 1" class="choice-input">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:4px;">
+                          <input type="radio" id="answer_{{q.id}}_2" name="answer_{{q.id}}" value="2" 
+                                 {% if q.answer == '2' %}checked{% endif %}>
+                          <input type="text" name="choice2_{{q.id}}" value="{{ q.choice2 or '' }}" 
+                                 placeholder="보기 2" class="choice-input">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:4px;">
+                          <input type="radio" id="answer_{{q.id}}_3" name="answer_{{q.id}}" value="3" 
+                                 {% if q.answer == '3' %}checked{% endif %}>
+                          <input type="text" name="choice3_{{q.id}}" value="{{ q.choice3 or '' }}" 
+                                 placeholder="보기 3" class="choice-input">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:4px;">
+                          <input type="radio" id="answer_{{q.id}}_4" name="answer_{{q.id}}" value="4" 
+                                 {% if q.answer == '4' %}checked{% endif %}>
+                          <input type="text" name="choice4_{{q.id}}" value="{{ q.choice4 or '' }}" 
+                                 placeholder="보기 4" class="choice-input">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:4px;">
+                          <input type="radio" id="answer_{{q.id}}_5" name="answer_{{q.id}}" value="5" 
+                                 {% if q.answer == '5' %}checked{% endif %}>
+                          <input type="text" name="choice5_{{q.id}}" value="{{ q.choice5 or '' }}" 
+                                 placeholder="보기 5" class="choice-input">
+                        </div>
+                      </div>
+                    </td>
+                    <td style="text-align: center;">
+                        <span id="selected_answer_{{q.id}}">
+                            {% if q.answer %}
+                                {{ q.answer }}
+                            {% else %}
+                                미선택
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td style="text-align: center;">
+                        <input type="number" name="score_{{ q.id }}" value="{{ q.score or 0 }}" 
+                               step="0.1" min="0" max="100" class="score-input">
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+            
+            <div class="action-buttons">
+                <button type="submit" name="change_numbers" class="change-numbers-btn">번호 변경 적용</button>
+                <button type="submit">저장</button>
+            </div>
+        </form>
         
-        var baseScore = 100 / total;
-        
-        for(var i = 0; i < scoreInputs.length; i++) {
-          var score = baseScore;
-          scoreInputs[i].value = score.toFixed(2);
-          
-          // 수동 변경 표시 제거 (모든 배점을 자동으로 재설정)
-          scoreInputs[i].classList.remove('manually-changed');
-        }
-        
-        updateTotalScore();
-      }
-      
+        <div style="margin-top: 20px;">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn">관리자 대시보드로 돌아가기</a>
+        </div>
+    </div>
 
-
-      document.addEventListener('DOMContentLoaded', function() {
-        // 배점 자동 분배 버튼 추가
-        let scoreBtn = document.createElement('button');
-        scoreBtn.type = 'button';
-        scoreBtn.textContent = '배점 자동분배';
-        scoreBtn.className = 'auto-score-btn';
-        scoreBtn.onclick = autoDistributeScores;
-        document.querySelector('form').insertBefore(scoreBtn, document.querySelector('#questionTable'));
-        
-
-                // 페이지 로드 시 총점 계산
-        updateTotalScore();
-        
-        // 모든 정답 표시 초기화
-        var allQuestions = document.querySelectorAll('input[type="radio"][name^="answer_"]');
-        for(var i = 0; i < allQuestions.length; i++) {
-          if(allQuestions[i].checked) {
-            var qid = allQuestions[i].name.replace('answer_', '');
-            updateAnswerDisplay(qid);
-          }
-        }
+    <script>
+        // 라디오 버튼 변경 시 정답 표시 업데이트
+        document.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const qid = this.name.split('_')[1];
+                const answer = this.value;
+                document.getElementById(`selected_answer_${qid}`).textContent = answer;
+            });
         });
     </script>
 </body>

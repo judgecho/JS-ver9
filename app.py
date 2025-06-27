@@ -14,6 +14,22 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 
+# 데이터베이스 초기화 및 관리자 계정 생성
+with app.app_context():
+    db.create_all()
+    # 관리자 계정이 없으면 생성
+    admin = User.query.filter_by(username='admin').first()
+    if not admin:
+        admin = User(username='admin', nickname='관리자', password='j12209942!', role='admin')
+        db.session.add(admin)
+        db.session.commit()
+        print("관리자 계정이 생성되었습니다. (아이디: admin, 비밀번호: j12209942!)")
+    else:
+        # 기존 관리자 비밀번호 업데이트
+        admin.password = 'j12209942!'
+        db.session.commit()
+        print("관리자 비밀번호가 업데이트되었습니다. (아이디: admin, 비밀번호: j12209942!)")
+
 @app.route('/')
 def home():
     return render_template('home.html')
@@ -154,7 +170,7 @@ def upload_exam():
             db.session.add(question)
         db.session.commit()
         # 자동배점 적용
-        auto_assign_scores(exam_id)
+        recalculate_scores(exam_id)
         flash("시험 업로드가 완료되었습니다.")
         return redirect(url_for('admin_dashboard'))
     return render_template('upload_exam.html')
@@ -207,190 +223,97 @@ def renumber_questions(exam_id):
 
 @app.route('/edit_exam/<int:exam_id>', methods=['GET', 'POST'])
 def edit_exam(exam_id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+    
     exam = Exam.query.get_or_404(exam_id)
     questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
+    
     if request.method == 'POST':
-        # 문항 추가 (맨 끝에)
-        if request.form.get('add_question'):
-            max_num = max([q.question_number for q in questions], default=0)
+        # 문항 번호 변경 처리
+        if request.form.get('change_numbers'):
+            print("=== 번호 변경 시작 ===")
+            number_changes = {}
             
-            # 새 문항 추가
-            new_q = Question(
-                exam_id=exam.id, 
-                question_number=max_num+1, 
-                choice1='', choice2='', choice3='', choice4='', choice5='', 
-                answer=None, score=0
-            )
-            db.session.add(new_q)
-            db.session.commit()
+            # 변경된 번호 수집
+            for q in questions:
+                new_number = request.form.get(f'number_{q.id}')
+                if new_number and new_number.isdigit():
+                    new_number = int(new_number)
+                    if new_number != q.question_number:
+                        number_changes[q.id] = new_number
+                        print(f"문항 {q.id}: 기존 번호 {q.question_number} -> 새 번호 {new_number}")
             
-            # 배점만 재계산 (기존 문항들의 데이터는 그대로 유지)
-            all_questions = Question.query.filter_by(exam_id=exam.id).order_by(Question.question_number).all()
-            total_count = len(all_questions)
-            if total_count > 0:
-                base_score = 100 // total_count
-                remainder = 100 % total_count
-                for idx, q in enumerate(all_questions):
-                    q.score = base_score + (1 if idx < remainder else 0)
-            
-            db.session.commit()
-            return redirect(url_for('edit_exam', exam_id=exam.id))
-        
-        # 특정 위치에 문항 삽입
-        if request.form.get('insert_question'):
-            insert_pos = int(request.form.get('insert_position', 1))
-            
-            # 삽입 위치 이후의 문항들 번호를 1씩 증가
-            questions_to_update = Question.query.filter(
-                Question.exam_id == exam.id,
-                Question.question_number >= insert_pos
-            ).all()
-            for q in questions_to_update:
-                q.question_number += 1
-            
-            # 새 문항을 지정된 위치에 삽입
-            new_q = Question(
-                exam_id=exam.id, 
-                question_number=insert_pos, 
-                choice1='', choice2='', choice3='', choice4='', choice5='', 
-                answer=None, score=0
-            )
-            db.session.add(new_q)
-            db.session.commit()
-            
-            # 배점만 재계산 (기존 문항들의 데이터는 그대로 유지)
-            all_questions = Question.query.filter_by(exam_id=exam.id).order_by(Question.question_number).all()
-            total_count = len(all_questions)
-            if total_count > 0:
-                base_score = 100 // total_count
-                remainder = 100 % total_count
-                for idx, q in enumerate(all_questions):
-                    q.score = base_score + (1 if idx < remainder else 0)
-            
-            db.session.commit()
-            return redirect(url_for('edit_exam', exam_id=exam.id))
-        # 문항 삭제
-        delete_id = request.form.get('delete_question_id')
-        if delete_id:
-            q = Question.query.get(int(delete_id))
-            if q and q.exam_id == exam.id:
-                db.session.delete(q)
+            if number_changes:
+                print(f"변경된 번호: {number_changes}")
+                
+                # 새로운 번호 할당 로직
+                # 1. 변경된 번호들을 먼저 할당
+                # 2. 나머지 문항들을 1부터 시작해서 연이어 할당 (이미 사용된 번호는 건너뛰기)
+                
+                # 모든 문항의 새 번호를 저장할 딕셔너리
+                final_numbers = {}
+                
+                # 변경된 번호들을 먼저 할당
+                for q_id, new_number in number_changes.items():
+                    final_numbers[q_id] = new_number
+                
+                # 사용된 번호들 수집
+                used_numbers = set(final_numbers.values())
+                
+                # 나머지 문항들을 1부터 시작해서 연이어 할당
+                next_number = 1
+                for q in questions:
+                    if q.id not in final_numbers:
+                        # 이미 사용된 번호는 건너뛰기
+                        while next_number in used_numbers:
+                            next_number += 1
+                        final_numbers[q.id] = next_number
+                        next_number += 1
+                
+                # 최종 번호 할당
+                for q_id, new_number in final_numbers.items():
+                    q = Question.query.get(q_id)
+                    if q:
+                        print(f"문항 {q_id} 번호 변경: {q.question_number} -> {new_number}")
+                        q.question_number = new_number
+                
                 db.session.commit()
-            
-            # 번호 재정렬 (1부터 시작)
-            remaining_questions = Question.query.filter_by(exam_id=exam.id).order_by(Question.question_number).all()
-            for idx, question in enumerate(remaining_questions):
-                question.question_number = idx + 1
-            
-            # 배점만 재계산 (기존 문항들의 데이터는 그대로 유지)
-            total_count = len(remaining_questions)
-            if total_count > 0:
-                base_score = 100 // total_count
-                remainder = 100 % total_count
-                for idx, q in enumerate(remaining_questions):
-                    q.score = base_score + (1 if idx < remainder else 0)
-            
-            db.session.commit()
-            return redirect(url_for('edit_exam', exam_id=exam.id))
-        # 번호 변경
-        if request.form.get('reorder_questions'):
-            # 번호 입력값을 위에서부터 읽음
-            number_inputs = []
-            for q in questions:
-                val = request.form.get(f'number_{q.id}')
-                try:
-                    number_inputs.append(int(val))
-                except (TypeError, ValueError):
-                    number_inputs.append(None)
-            # 첫 번째로 바뀐 번호 찾기
-            start_idx = None
-            for i, (q, num) in enumerate(zip(questions, number_inputs)):
-                if num is not None and num != q.question_number:
-                    start_idx = i
-                    break
-            # 번호 재배정
-            if start_idx is not None:
-                new_num = number_inputs[start_idx]
-                for i in range(start_idx, len(questions)):
-                    q = questions[i]
-                    q.question_number = new_num + (i - start_idx)
-            db.session.commit()
-            return redirect(url_for('edit_exam', exam_id=exam.id))
-        # 배점 변경
-        if request.form.get('update_scores'):
-            # 기존 문항들의 정답과 보기 데이터를 임시 저장
-            existing_data = {}
-            for q in questions:
-                existing_data[q.id] = {
-                    'answer': q.answer,
-                    'choice1': q.choice1,
-                    'choice2': q.choice2,
-                    'choice3': q.choice3,
-                    'choice4': q.choice4,
-                    'choice5': q.choice5
-                }
-            
-            # 배점 업데이트
-            for q in questions:
-                new_score = request.form.get(f'score_{q.id}')
-                if new_score and new_score.replace('.', '').isdigit():
-                    q.score = float(new_score)
-            
-            db.session.commit()
-            
-            # 기존 문항들의 데이터를 완전히 복원
-            all_questions = Question.query.filter_by(exam_id=exam.id).all()
-            for q in all_questions:
-                if q.id in existing_data:
-                    data = existing_data[q.id]
-                    q.answer = data['answer']
-                    q.choice1 = data['choice1']
-                    q.choice2 = data['choice2']
-                    q.choice3 = data['choice3']
-                    q.choice4 = data['choice4']
-                    q.choice5 = data['choice5']
-            
-            db.session.commit()
-            
-            # 번호 연속화
-            renumber_questions(exam.id)
-            return redirect(url_for('edit_exam', exam_id=exam.id))
-        # 일반 저장
-        exam.title = request.form.get('title', exam.title)
-        exam.description = request.form.get('description', exam.description or '')
-        exam.duration = int(request.form.get('duration', exam.duration or 60))
-        exam.total_score = int(request.form.get('total_score', exam.total_score or 100))
-        exam.category = request.form.get('category', exam.category or '기타')
+                print("데이터베이스 커밋 완료")
+                
+                # 배점 재계산
+                questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
+                score_per_question = 100 / len(questions)
+                for q in questions:
+                    q.score = round(score_per_question, 1)
+                db.session.commit()
+                print("배점 재계산 완료")
         
-        # 문항 업데이트
+        # 문항 내용 및 배점 업데이트
         for q in questions:
-            q.choice1 = request.form.get(f'choice1_{q.id}', q.choice1 or '')
-            q.choice2 = request.form.get(f'choice2_{q.id}', q.choice2 or '')
-            q.choice3 = request.form.get(f'choice3_{q.id}', q.choice3 or '')
-            q.choice4 = request.form.get(f'choice4_{q.id}', q.choice4 or '')
-            q.choice5 = request.form.get(f'choice5_{q.id}', q.choice5 or '')
+            q_id = str(q.id)
+            q.choice1 = request.form.get(f'choice1_{q_id}', '')
+            q.choice2 = request.form.get(f'choice2_{q_id}', '')
+            q.choice3 = request.form.get(f'choice3_{q_id}', '')
+            q.choice4 = request.form.get(f'choice4_{q_id}', '')
+            q.choice5 = request.form.get(f'choice5_{q_id}', '')
+            q.answer = request.form.get(f'answer_{q_id}', '')
             
-            # 정답 업데이트 (라디오 버튼 또는 직접 입력)
-            answer = request.form.get(f'answer_{q.id}')
-            if answer and answer.isdigit():
-                q.answer = int(answer)
-            else:
-                # 직접 입력 필드 확인
-                direct_answer = request.form.get(f'direct_answer_{q.id}')
-                if direct_answer and direct_answer.isdigit():
-                    q.answer = int(direct_answer)
-            
-            # 배점 업데이트
-            score = request.form.get(f'score_{q.id}')
-            if score and score.replace('.', '').isdigit():
+            # 개별 배점 수정
+            score = request.form.get(f'score_{q_id}', '0')
+            try:
                 q.score = float(score)
+            except ValueError:
+                q.score = 0
+        
+        # 시험 정보 업데이트
+        exam.title = request.form.get('title', exam.title or '')
+        exam.category = request.form.get('category', getattr(exam, 'category', '') or '')
         
         db.session.commit()
-        return redirect(url_for('edit_exam', exam_id=exam.id))
-    questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
-    # 각 문항에 choices 딕셔너리 추가
-    for q in questions:
-        q.choices = {f'choice{i}': getattr(q, f'choice{i}') for i in range(1, 6)}
+        flash('시험이 성공적으로 업데이트되었습니다.', 'success')
+        return redirect(url_for('edit_exam', exam_id=exam_id))
+    
     return render_template('edit_exam.html', exam=exam, questions=questions)
 
 @app.route('/logs')
@@ -413,9 +336,12 @@ def copy_exam_ui(exam_id):
         for idx, q in enumerate(questions):
             new_q = Question(
                 exam_id=copied.id,
-                question_text='',
-                options='[]',
-                correct_answer=q.correct_answer,
+                choice1=q.choice1,
+                choice2=q.choice2,
+                choice3=q.choice3,
+                choice4=q.choice4,
+                choice5=q.choice5,
+                answer=q.answer,
                 score=q.score,
                 question_number=idx + 1
             )
@@ -426,49 +352,6 @@ def copy_exam_ui(exam_id):
         db.session.commit()
         return redirect(url_for('admin_dashboard'))
     return render_template('copy_exam.html', exam=original)
-
-def auto_assign_scores(exam_id):
-    questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
-    count = len(questions)
-    if count == 0: return
-    
-    # 기존 정답과 보기 데이터 임시 저장
-    existing_data = {}
-    for q in questions:
-        existing_data[q.id] = {
-            'answer': q.answer,
-            'choice1': q.choice1,
-            'choice2': q.choice2,
-            'choice3': q.choice3,
-            'choice4': q.choice4,
-            'choice5': q.choice5
-        }
-    
-    # 100점을 문항 수로 나누어 배점 계산
-    base_score = 100 // count
-    remainder = 100 % count
-    
-    for idx, q in enumerate(questions):
-        # 배점 설정 (나머지는 앞쪽 문항에 1점씩 추가)
-        q.score = base_score + (1 if idx < remainder else 0)
-        # 문항 번호 설정 (1부터 시작)
-        q.question_number = idx + 1
-    
-    db.session.commit()
-    
-    # 기존 정답과 보기 데이터 복원 (새로 조회)
-    updated_questions = Question.query.filter_by(exam_id=exam_id).all()
-    for q in updated_questions:
-        if q.id in existing_data:
-            data = existing_data[q.id]
-            q.answer = data['answer']
-            q.choice1 = data['choice1']
-            q.choice2 = data['choice2']
-            q.choice3 = data['choice3']
-            q.choice4 = data['choice4']
-            q.choice5 = data['choice5']
-    
-    db.session.commit()
 
 @app.route('/admin/students', methods=['GET', 'POST'])
 def admin_students():
@@ -579,24 +462,31 @@ def create_exam():
         exam = Exam(title=title, created_by=session['user_id'], category=category)
         db.session.add(exam)
         db.session.commit()
-        # 문항 수만큼 빈 문제 생성 (정답은 None으로 유지, 배점은 0으로 설정)
+        
+        # 문항 수만큼 빈 문제 생성
         for i in range(1, question_count+1):
             q = Question(
                 exam_id=exam.id, 
-                question_number=i,  # 명시적으로 문항 번호 설정
-                choice1='', 
-                choice2='', 
-                choice3='', 
-                choice4='', 
-                choice5='', 
-                answer=None,  # 정답은 None으로 유지 (삭제하지 않음)
+                question_number=i,
+                choice1='보기 1', 
+                choice2='보기 2', 
+                choice3='보기 3', 
+                choice4='보기 4', 
+                choice5='보기 5',
+                answer='',
                 score=0
             )
             db.session.add(q)
+        
+        # 배점 자동 계산
+        score_per_question = 100 / question_count
+        for q in Question.query.filter_by(exam_id=exam.id).all():
+            q.score = round(score_per_question, 1)
+        
+        exam.total_score = 100
         db.session.commit()
-        # 자동배점 적용 (문항 번호도 함께 정리)
-        auto_assign_scores(exam.id)
-        flash('시험이 생성되었습니다. 문제를 추가하세요.')
+        print(f"배점 재계산 완료: 문항 {question_count}개, 문항당 {score_per_question:.1f}점")
+        
         return redirect(url_for('edit_exam', exam_id=exam.id))
     return render_template('create_exam.html')
 

@@ -23,19 +23,18 @@ class Exam(db.Model):
 class Question(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     exam_id = db.Column(db.Integer, db.ForeignKey('exam.id'), nullable=False)
-    question_text = db.Column(db.Text)
+    question_number = db.Column(db.Integer, nullable=False)
     options = db.Column(db.Text)  # JSON 형식의 보기 문자열
     correct_answer = db.Column(db.String(10))  # 정답 (예: '1', '2', '3', '4', '5')
     score = db.Column(db.Integer)
-    question_number = db.Column(db.Integer)
 
     # 업로드용 보기 필드 (5지선다)
-    choice1 = db.Column(db.String(255))
-    choice2 = db.Column(db.String(255))
-    choice3 = db.Column(db.String(255))
-    choice4 = db.Column(db.String(255))
-    choice5 = db.Column(db.String(255))
-    answer = db.Column(db.Integer)
+    choice1 = db.Column(db.String(255), nullable=True)
+    choice2 = db.Column(db.String(255), nullable=True)
+    choice3 = db.Column(db.String(255), nullable=True)
+    choice4 = db.Column(db.String(255), nullable=True)
+    choice5 = db.Column(db.String(255), nullable=True)
+    answer = db.Column(db.String(255), nullable=True)
 
 class Result(db.Model):
     id = db.Column(db.Integer, primary_key=True)
