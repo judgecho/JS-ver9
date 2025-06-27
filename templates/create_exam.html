@@ -13,6 +13,28 @@
     .category-group { margin-bottom: 15px; }
     .subcategory { margin-left: 20px; margin-top: 10px; display: none; }
     .subcategory.active { display: block; }
+    .scoring-options { 
+      margin: 20px 0; 
+      padding: 15px; 
+      background-color: #f8f9fa; 
+      border-radius: 8px; 
+      border-left: 4px solid #007bff; 
+    }
+    .scoring-options label { margin-bottom: 8px; }
+    .scoring-options input, .scoring-options select { margin-bottom: 12px; }
+    #manualScoringOptions { 
+      margin-top: 15px; 
+      padding: 15px; 
+      background-color: #fff; 
+      border-radius: 5px; 
+      border: 1px solid #dee2e6; 
+    }
+    .info.small { 
+      font-size: 0.85em; 
+      color: #6c757d; 
+      margin-top: 10px; 
+      line-height: 1.4; 
+    }
   </style>
 </head>
 <body>
@@ -93,6 +115,30 @@
       <input name="question_count" type="number" min="1" max="100" required>
     </label>
 
+    <div class="scoring-options">
+      <label>배점 설정 방식
+        <select name="scoring_method" id="scoringMethod">
+          <option value="auto">자동 균등 분배 (100점 ÷ 문항 수)</option>
+          <option value="manual">수동 설정</option>
+        </select>
+      </label>
+
+      <div id="manualScoringOptions" style="display: none;">
+        <label>기본 배점 (문항당)
+          <input name="default_score" type="number" min="0" max="100" step="0.1" placeholder="예: 20.0">
+        </label>
+        
+        <label>총점
+          <input name="total_score" type="number" min="1" max="1000" placeholder="예: 100">
+        </label>
+        
+        <div class="info small">
+          💡 기본 배점 × 문항 수 = 총점이 되도록 설정하세요.<br>
+          예: 문항 5개, 기본 배점 20점 → 총점 100점
+        </div>
+      </div>
+    </div>
+
     <input type="hidden" name="category" id="finalCategory">
     <button type="submit">시험 생성</button>
     <div class="info">시험 생성 후 문제를 추가/편집할 수 있습니다.</div>
@@ -110,6 +156,35 @@
         document.getElementById('listeningTestSubcategory').classList.add('active');
       }
     });
+
+    // 배점 설정 방식 변경 시 UI 업데이트
+    document.getElementById('scoringMethod').addEventListener('change', function() {
+      const manualOptions = document.getElementById('manualScoringOptions');
+      if (this.value === 'manual') {
+        manualOptions.style.display = 'block';
+      } else {
+        manualOptions.style.display = 'none';
+      }
+    });
+
+    // 문항 수와 기본 배점 변경 시 총점 자동 계산
+    function updateTotalScore() {
+      const questionCount = parseInt(document.querySelector('input[name="question_count"]').value) || 0;
+      const defaultScore = parseFloat(document.querySelector('input[name="default_score"]').value) || 0;
+      const totalScoreInput = document.querySelector('input[name="total_score"]');
+      
+      if (questionCount > 0 && defaultScore > 0) {
+        const calculatedTotal = questionCount * defaultScore;
+        totalScoreInput.value = calculatedTotal;
+        totalScoreInput.style.backgroundColor = '#e8f5e8';
+      } else {
+        totalScoreInput.style.backgroundColor = '#fff';
+      }
+    }
+
+    // 이벤트 리스너 추가
+    document.querySelector('input[name="question_count"]').addEventListener('input', updateTotalScore);
+    document.querySelector('input[name="default_score"]').addEventListener('input', updateTotalScore);
 
     // Update final category before form submission
     document.querySelector('form').addEventListener('submit', function(e) {

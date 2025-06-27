@@ -528,6 +528,8 @@ def create_exam():
         title = request.form['title']
         category = request.form.get('category', '기타')
         question_count = int(request.form.get('question_count', 0))
+        scoring_method = request.form.get('scoring_method', 'auto')
+        
         exam = Exam(title=title, created_by=session['user_id'], category=category)
         db.session.add(exam)
         db.session.commit()
@@ -547,14 +549,34 @@ def create_exam():
             )
             db.session.add(q)
         
-        # 배점 자동 계산
-        score_per_question = 100 / question_count
-        for q in Question.query.filter_by(exam_id=exam.id).all():
-            q.score = round(score_per_question, 1)
+        # 배점 설정 방식에 따른 배점 계산
+        if scoring_method == 'manual':
+            # 수동 설정: 기본 배점과 총점 사용
+            default_score = float(request.form.get('default_score', 0))
+            total_score = float(request.form.get('total_score', 100))
+            
+            if default_score > 0:
+                # 기본 배점으로 모든 문항 설정
+                for q in Question.query.filter_by(exam_id=exam.id).all():
+                    q.score = round(default_score, 1)
+                exam.total_score = total_score
+                print(f"수동 배점 설정 완료: 문항 {question_count}개, 문항당 {default_score}점, 총점 {total_score}점")
+            else:
+                # 기본 배점이 설정되지 않은 경우 자동 계산
+                score_per_question = total_score / question_count
+                for q in Question.query.filter_by(exam_id=exam.id).all():
+                    q.score = round(score_per_question, 1)
+                exam.total_score = total_score
+                print(f"총점 기반 자동 배점 설정: 문항 {question_count}개, 문항당 {score_per_question:.1f}점, 총점 {total_score}점")
+        else:
+            # 자동 균등 분배 (기본값)
+            score_per_question = 100 / question_count
+            for q in Question.query.filter_by(exam_id=exam.id).all():
+                q.score = round(score_per_question, 1)
+            exam.total_score = 100
+            print(f"자동 균등 분배 완료: 문항 {question_count}개, 문항당 {score_per_question:.1f}점")
         
-        exam.total_score = 100
         db.session.commit()
-        print(f"배점 재계산 완료: 문항 {question_count}개, 문항당 {score_per_question:.1f}점")
         
         return redirect(url_for('edit_exam', exam_id=exam.id))
     return render_template('create_exam.html')
