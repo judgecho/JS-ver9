@@ -18,8 +18,10 @@
             background-color: #f2f2f2;
         }
         .number-input {
-            width: 60px;
+            width: 40px;
             text-align: center;
+            font-size: 12px;
+            padding: 4px;
         }
         .score-input {
             width: 80px;
@@ -30,8 +32,9 @@
         }
         .choices-edit {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             gap: 4px;
+            justify-content: center;
         }
         .action-buttons {
             margin: 20px 0;
@@ -162,67 +165,60 @@
         }
         .answer-choices {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             margin-bottom: 8px;
             justify-content: center;
+            align-items: center;
         }
         .choice-btn {
             display: flex;
-            flex-direction: column;
             align-items: center;
+            justify-content: center;
             cursor: pointer;
             border: 2px solid #dee2e6;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            justify-content: center;
+            width: 35px;
+            height: 35px;
             background: #fff;
             transition: all 0.3s ease;
             position: relative;
             font-weight: bold;
-            font-size: 16px;
+            font-size: 14px;
+            color: #495057;
         }
         .choice-btn:hover {
             border: 2.5px solid #007bff;
             transform: scale(1.1);
             box-shadow: 0 4px 8px rgba(0,123,255,0.3);
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
         }
         .choice-btn.selected {
             border: 2.5px solid #007bff;
             background: linear-gradient(135deg, #007bff, #0056b3);
-            box-shadow: 0 0 0 3px #007bff33, 0 4px 12px rgba(0,123,255,0.4);
+            color: white;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.3), 0 4px 12px rgba(0,123,255,0.4);
             transform: scale(1.05);
         }
-        .choice-circle {
-            display: block;
-            width: 24px;
-            height: 24px;
+        .choice-btn.selected::after {
+            content: '✓';
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background: #28a745;
+            color: white;
             border-radius: 50%;
-            background: #f1f3f4;
-            color: #333;
-            line-height: 24px;
-            text-align: center;
-            font-size: 14px;
-            transition: all 0.3s ease;
+            width: 16px;
+            height: 16px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: bounceIn 0.5s ease;
         }
-        .choice-btn.selected .choice-circle {
-            background: #fff;
-            color: #007bff;
-            transform: scale(1.1);
-        }
-        .choice-check {
-            display: none;
-            color: #fff;
-            font-size: 12px;
-            margin-top: 2px;
-            animation: fadeIn 0.3s ease;
-        }
-        .choice-btn.selected .choice-check {
-            display: block;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.5); }
-            to { opacity: 1; transform: scale(1); }
+        @keyframes bounceIn {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
         }
         @keyframes pulse {
             0% { transform: scale(1); }
@@ -232,6 +228,25 @@
         .choice-btn.selected {
             animation: pulse 2s infinite;
         }
+        .choice-btn:nth-child(1) { border-color: #e74c3c; }
+        .choice-btn:nth-child(1):hover { border-color: #c0392b; background: linear-gradient(135deg, #ffebee, #ffcdd2); }
+        .choice-btn:nth-child(1).selected { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        
+        .choice-btn:nth-child(2) { border-color: #f39c12; }
+        .choice-btn:nth-child(2):hover { border-color: #d68910; background: linear-gradient(135deg, #fff3e0, #ffe0b2); }
+        .choice-btn:nth-child(2).selected { background: linear-gradient(135deg, #f39c12, #d68910); }
+        
+        .choice-btn:nth-child(3) { border-color: #f1c40f; }
+        .choice-btn:nth-child(3):hover { border-color: #d4ac0f; background: linear-gradient(135deg, #fffde7, #fff9c4); }
+        .choice-btn:nth-child(3).selected { background: linear-gradient(135deg, #f1c40f, #d4ac0f); }
+        
+        .choice-btn:nth-child(4) { border-color: #27ae60; }
+        .choice-btn:nth-child(4):hover { border-color: #229954; background: linear-gradient(135deg, #e8f5e8, #c8e6c9); }
+        .choice-btn:nth-child(4).selected { background: linear-gradient(135deg, #27ae60, #229954); }
+        
+        .choice-btn:nth-child(5) { border-color: #9b59b6; }
+        .choice-btn:nth-child(5):hover { border-color: #8e44ad; background: linear-gradient(135deg, #f3e5f5, #e1bee7); }
+        .choice-btn:nth-child(5).selected { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
     </style>
 </head>
 <body>
@@ -324,8 +339,7 @@
                             {% for i in range(1, 6) %}
                             <label class="choice-btn {% if q.answer == i|string %}selected{% endif %}" data-choice="{{i}}">
                               <input type="radio" id="answer_{{q.id}}_{{i}}" name="answer_{{q.id}}" value="{{i}}" {% if q.answer == i|string %}checked{% endif %} style="display:none;">
-                              <span class="choice-circle">{{i}}</span>
-                              <span class="choice-check">✔</span>
+                              {{i}}
                             </label>
                             {% endfor %}
                           </div>
@@ -399,9 +413,14 @@
             if (totalDisplay) {
                 totalDisplay.textContent = `${totalScore.toFixed(1)}점`;
                 
-                if (totalScore > {{ exam.total_score }}) {
+                // 동적으로 총점 계산 (문항 수 × 기본 배점)
+                const questionCount = scoreInputs.length;
+                const defaultScore = parseFloat(document.getElementById('newDefaultScore').value) || ({{ exam.total_score }} / questionCount);
+                const expectedTotal = questionCount * defaultScore;
+                
+                if (totalScore > expectedTotal) {
                     totalDisplay.style.color = 'red';
-                } else if (totalScore === {{ exam.total_score }}) {
+                } else if (Math.abs(totalScore - expectedTotal) < 0.1) {
                     totalDisplay.style.color = 'green';
                 } else {
                     totalDisplay.style.color = 'orange';
@@ -411,14 +430,18 @@
             // 안내 메시지 업데이트
             const infoDisplay = document.querySelector('.scoring-info .info');
             if (infoDisplay) {
-                if (totalScore > {{ exam.total_score }}) {
-                    infoDisplay.textContent = `⚠️ 수동 배점이 {{ exam.total_score }}점을 초과합니다. 저장 시 나머지 문항들의 배점이 0점으로 설정됩니다.`;
+                const questionCount = scoreInputs.length;
+                const defaultScore = parseFloat(document.getElementById('newDefaultScore').value) || ({{ exam.total_score }} / questionCount);
+                const expectedTotal = questionCount * defaultScore;
+                
+                if (totalScore > expectedTotal) {
+                    infoDisplay.textContent = `⚠️ 수동 배점이 ${expectedTotal.toFixed(1)}점을 초과합니다. 저장 시 나머지 문항들의 배점이 0점으로 설정됩니다.`;
                     infoDisplay.style.color = 'red';
-                } else if (totalScore === {{ exam.total_score }}) {
+                } else if (Math.abs(totalScore - expectedTotal) < 0.1) {
                     infoDisplay.textContent = '✅ 배점이 완벽하게 설정되었습니다.';
                     infoDisplay.style.color = 'green';
                 } else {
-                    const remaining = {{ exam.total_score }} - totalScore;
+                    const remaining = expectedTotal - totalScore;
                     const remainingQuestions = scoreInputs.length - manualCount;
                     if (remainingQuestions > 0) {
                         const avgScore = (remaining / remainingQuestions).toFixed(1);
@@ -445,7 +468,7 @@
                     input.style.backgroundColor = '#e8f4fd';
                     input.style.borderColor = '#007bff';
                     
-                    // 툴팁 추가
+                    // 툴크 추가
                     input.title = `자동 조정 예상 배점: ${avgScore}점`;
                 } else {
                     // 수동 배점 스타일
