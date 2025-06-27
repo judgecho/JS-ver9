@@ -497,7 +497,7 @@ def create_exam():
     if request.method == 'POST':
         title = request.form['title']
         category = request.form.get('category', '기타')
-        question_count = int(request.form.get('question_count', 0))
+        question_count = int(request.form.get('question_count', 5))
         scoring_method = request.form.get('scoring_method', 'auto')
         
         exam = Exam(title=title, created_by=session['user_id'], category=category)
@@ -523,7 +523,7 @@ def create_exam():
         if scoring_method == 'manual':
             # 수동 설정: 기본 배점과 총점 사용
             default_score = float(request.form.get('default_score', 0))
-            total_score = float(request.form.get('total_score', 100))
+            total_score = float(request.form.get('total_score', 0))
             
             if default_score > 0:
                 # 기본 배점으로 모든 문항 설정
@@ -532,12 +532,13 @@ def create_exam():
                 exam.total_score = total_score
                 print(f"수동 배점 설정 완료: 문항 {question_count}개, 문항당 {default_score}점, 총점 {total_score}점")
             else:
-                # 기본 배점이 설정되지 않은 경우 자동 계산
-                score_per_question = total_score / question_count
+                # 기본 배점이 설정되지 않은 경우 기본값 사용
+                default_score = 20.0
+                total_score = question_count * default_score
                 for q in Question.query.filter_by(exam_id=exam.id).all():
-                    q.score = round(score_per_question, 1)
+                    q.score = round(default_score, 1)
                 exam.total_score = total_score
-                print(f"총점 기반 자동 배점 설정: 문항 {question_count}개, 문항당 {score_per_question:.1f}점, 총점 {total_score}점")
+                print(f"기본값으로 배점 설정: 문항 {question_count}개, 문항당 {default_score}점, 총점 {total_score}점")
         else:
             # 자동 균등 분배: 사용자가 설정한 총점 사용
             total_score = float(request.form.get('auto_total_score', 100))

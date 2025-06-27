@@ -13,27 +13,62 @@
     .category-group { margin-bottom: 15px; }
     .subcategory { margin-left: 20px; margin-top: 10px; display: none; }
     .subcategory.active { display: block; }
-    .scoring-options { 
-      margin: 20px 0; 
-      padding: 15px; 
-      background-color: #f8f9fa; 
-      border-radius: 8px; 
-      border-left: 4px solid #007bff; 
+    .scoring-options {
+      margin: 20px 0;
+      padding: 20px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #dee2e6;
     }
-    .scoring-options label { margin-bottom: 8px; }
-    .scoring-options input, .scoring-options select { margin-bottom: 12px; }
-    #manualScoringOptions { 
-      margin-top: 15px; 
-      padding: 15px; 
-      background-color: #fff; 
-      border-radius: 5px; 
-      border: 1px solid #dee2e6; 
+    .scoring-options h4 {
+      margin: 0 0 15px 0;
+      color: #495057;
+      font-size: 18px;
     }
-    .info.small { 
-      font-size: 0.85em; 
-      color: #6c757d; 
-      margin-top: 10px; 
-      line-height: 1.4; 
+    .scoring-method {
+      margin-bottom: 20px;
+    }
+    .scoring-method select {
+      width: 200px;
+      padding: 8px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .scoring-inputs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+    .scoring-inputs label {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .scoring-inputs input {
+      padding: 8px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .calculation-preview {
+      grid-column: 1 / -1;
+      padding: 10px;
+      background-color: #e8f4fd;
+      border-radius: 4px;
+      border-left: 3px solid #007bff;
+      margin-top: 10px;
+    }
+    .calculation-preview span {
+      font-weight: bold;
+      color: #007bff;
+      font-size: 14px;
+    }
+    .info.small {
+      font-size: 13px;
+      color: #6c757d;
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -111,42 +146,57 @@
       </div>
     </div>
 
-    <label>문항 수
-      <input name="question_count" type="number" min="1" max="100" required>
-    </label>
+    <div>
+      <label>문항 수:
+        <input type="number" name="question_count" min="1" max="100" value="5" required>
+      </label>
+    </div>
 
     <div class="scoring-options">
-      <label>배점 설정 방식
-        <select name="scoring_method" id="scoringMethod">
-          <option value="auto">자동 균등 분배 (총점 ÷ 문항 수)</option>
-          <option value="manual">수동 설정</option>
-        </select>
-      </label>
+      <h4>배점 설정</h4>
+      
+      <div class="scoring-method">
+        <label>배점 설정 방식:
+          <select name="scoring_method" id="scoringMethod">
+            <option value="auto">자동 균등 분배</option>
+            <option value="manual">수동 설정</option>
+          </select>
+        </label>
+      </div>
 
       <div id="autoScoringOptions">
-        <label>총점
-          <input name="auto_total_score" type="number" min="1" max="1000" value="100" placeholder="예: 100">
-        </label>
+        <div class="scoring-inputs">
+          <label>총점:
+            <input name="auto_total_score" type="number" min="1" max="1000" value="100" placeholder="예: 100">
+          </label>
+          
+          <div class="calculation-preview">
+            <span id="autoCalculationResult">문항 5개 × 20.0점 = 100점</span>
+          </div>
+        </div>
         
         <div class="info small">
-          💡 설정한 총점을 문항 수로 나누어 균등 분배합니다.<br>
-          예: 총점 100점, 문항 5개 → 각 문항 20점
+          💡 설정한 총점을 문항 수로 나누어 균등 분배합니다.
         </div>
       </div>
 
       <div id="manualScoringOptions" style="display: none;">
-        <label>기본 배점 (문항당)
-          <input name="default_score" type="number" min="0" max="1000" step="0.1" placeholder="예: 20.0">
-        </label>
-        
-        <label>총점
-          <input name="total_score" type="number" min="1" max="1000" placeholder="예: 100">
-        </label>
+        <div class="scoring-inputs">
+          <label>기본 배점 (문항당):
+            <input name="default_score" type="number" min="0.1" max="1000" step="0.1" placeholder="예: 20.0">
+          </label>
+          
+          <label>총점:
+            <input name="total_score" type="number" min="1" max="1000" placeholder="자동 계산됨" readonly>
+          </label>
+          
+          <div class="calculation-preview">
+            <span id="manualCalculationResult">문항 5개 × 0점 = 0점</span>
+          </div>
+        </div>
         
         <div class="info small">
-          💡 기본 배점 × 문항 수 = 총점이 되도록 설정하세요.<br>
-          예: 문항 5개, 기본 배점 20점 → 총점 100점<br>
-          또는 문항 10개, 기본 배점 15점 → 총점 150점
+          💡 기본 배점 × 문항 수 = 총점이 자동으로 계산됩니다.
         </div>
       </div>
     </div>
@@ -182,11 +232,11 @@
         manualOptions.style.display = 'none';
       }
       
-      updateTotalScore();
+      updateCalculations();
     });
 
     // 문항 수와 배점 변경 시 실시간 계산
-    function updateTotalScore() {
+    function updateCalculations() {
       const questionCount = parseInt(document.querySelector('input[name="question_count"]').value) || 0;
       const scoringMethod = document.getElementById('scoringMethod').value;
       
@@ -195,10 +245,9 @@
         const scorePerQuestion = questionCount > 0 ? (totalScore / questionCount).toFixed(1) : 0;
         
         // 자동 계산 결과 표시
-        const infoDisplay = document.querySelector('#autoScoringOptions .info');
-        if (infoDisplay && questionCount > 0) {
-          infoDisplay.innerHTML = `💡 설정한 총점을 문항 수로 나누어 균등 분배합니다.<br>
-            예: 총점 ${totalScore}점, 문항 ${questionCount}개 → 각 문항 ${scorePerQuestion}점`;
+        const resultDisplay = document.getElementById('autoCalculationResult');
+        if (resultDisplay && questionCount > 0) {
+          resultDisplay.textContent = `문항 ${questionCount}개 × ${scorePerQuestion}점 = ${totalScore}점`;
         }
       } else {
         const defaultScore = parseFloat(document.querySelector('input[name="default_score"]').value) || 0;
@@ -208,16 +257,34 @@
           const calculatedTotal = questionCount * defaultScore;
           totalScoreInput.value = calculatedTotal;
           totalScoreInput.style.backgroundColor = '#e8f5e8';
+          
+          // 수동 계산 결과 표시
+          const resultDisplay = document.getElementById('manualCalculationResult');
+          if (resultDisplay) {
+            resultDisplay.textContent = `문항 ${questionCount}개 × ${defaultScore}점 = ${calculatedTotal}점`;
+          }
         } else {
+          totalScoreInput.value = '';
           totalScoreInput.style.backgroundColor = '#fff';
+          
+          // 수동 계산 결과 표시
+          const resultDisplay = document.getElementById('manualCalculationResult');
+          if (resultDisplay) {
+            resultDisplay.textContent = `문항 ${questionCount}개 × ${defaultScore}점 = ${questionCount * defaultScore}점`;
+          }
         }
       }
     }
 
     // 이벤트 리스너 추가
-    document.querySelector('input[name="question_count"]').addEventListener('input', updateTotalScore);
-    document.querySelector('input[name="auto_total_score"]').addEventListener('input', updateTotalScore);
-    document.querySelector('input[name="default_score"]').addEventListener('input', updateTotalScore);
+    document.querySelector('input[name="question_count"]').addEventListener('input', updateCalculations);
+    document.querySelector('input[name="auto_total_score"]').addEventListener('input', updateCalculations);
+    document.querySelector('input[name="default_score"]').addEventListener('input', updateCalculations);
+    
+    // 페이지 로드 시 초기 계산
+    document.addEventListener('DOMContentLoaded', function() {
+      updateCalculations();
+    });
 
     // Update final category before form submission
     document.querySelector('form').addEventListener('submit', function(e) {

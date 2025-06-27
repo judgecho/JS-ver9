@@ -120,12 +120,16 @@
                   <span class="value">{{ exam.total_score }}점</span>
                 </div>
                 <div class="info-item">
+                  <span class="label">문항 수:</span>
+                  <span class="value">{{ questions|length }}개</span>
+                </div>
+                <div class="info-item">
                   <span class="label">기본 배점:</span>
                   <span class="value">{{ "%.1f"|format(exam.total_score / questions|length) }}점</span>
                 </div>
                 <div class="info-item">
-                  <span class="label">문항 수:</span>
-                  <span class="value">{{ questions|length }}개</span>
+                  <span class="label">현재 총점:</span>
+                  <span class="value" id="currentTotalScore">{{ "%.1f"|format(questions|sum(attribute='score')) }}점</span>
                 </div>
               </div>
               
@@ -254,7 +258,7 @@
             });
             
             // 총점 표시 업데이트 (실시간 계산)
-            const totalDisplay = document.querySelector('.scoring-info .value');
+            const totalDisplay = document.getElementById('currentTotalScore');
             if (totalDisplay) {
                 totalDisplay.textContent = `${totalScore.toFixed(1)}점`;
                 
