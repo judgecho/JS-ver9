@@ -18,27 +18,27 @@
             background-color: #f2f2f2;
         }
         .number-input, .answer-input, .score-input {
-            width: 48px;
+            width: 40px;
             text-align: center;
-            font-size: 1.3em;
-            padding: 4px 2px;
-            border-radius: 6px;
+            font-size: 1.2em;
+            padding: 3px 1px;
+            border-radius: 4px;
         }
         .question-table td.number-col, .question-table td.answer-col, .question-table td.score-col {
-            width: 60px;
-            min-width: 48px;
-            max-width: 70px;
-            padding: 4px 2px;
+            width: 50px;
+            min-width: 40px;
+            max-width: 55px;
+            padding: 3px 1px;
         }
         .question-table td.choices-col {
-            min-width: 260px;
-            width: 40%;
-            padding: 8px 10px;
+            min-width: 320px;
+            width: 50%;
+            padding: 10px 15px;
         }
         .choices-edit {
             display: flex;
             flex-direction: row;
-            gap: 18px;
+            gap: 15px;
             justify-content: center;
             align-items: center;
         }
@@ -181,26 +181,26 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            border: 2.5px solid #007bff;
-            border-radius: 22px;
-            width: 60px;
-            height: 38px;
+            border: 3px solid #007bff;
+            border-radius: 28px;
+            width: 75px;
+            height: 48px;
             background: #f8f9fa;
             transition: all 0.2s;
             font-weight: bold;
-            font-size: 1.5em;
+            font-size: 1.8em;
             color: #007bff;
-            box-shadow: 0 2px 8px rgba(0,123,255,0.08);
+            box-shadow: 0 3px 10px rgba(0,123,255,0.1);
         }
         .choice-btn:hover, .choice-btn.selected {
             background: linear-gradient(135deg, #007bff 60%, #0056b3 100%);
             color: #fff;
             border-color: #0056b3;
-            box-shadow: 0 4px 16px rgba(0,123,255,0.18);
-            transform: scale(1.08);
+            box-shadow: 0 5px 20px rgba(0,123,255,0.2);
+            transform: scale(1.1);
         }
         .choice-btn:active {
-            transform: scale(0.98);
+            transform: scale(0.95);
         }
         .choice-btn:nth-child(1) { border-color: #e74c3c; }
         .choice-btn:nth-child(1):hover { border-color: #c0392b; background: linear-gradient(135deg, #ffebee, #ffcdd2); }
@@ -221,6 +221,18 @@
         .choice-btn:nth-child(5) { border-color: #9b59b6; }
         .choice-btn:nth-child(5):hover { border-color: #8e44ad; background: linear-gradient(135deg, #f3e5f5, #e1bee7); }
         .choice-btn:nth-child(5).selected { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+        .reset-score-btn {
+            margin-top: 3px !important;
+            padding: 2px 4px !important;
+            font-size: 9px !important;
+            background: #6c757d !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 2px !important;
+            cursor: pointer !important;
+            width: 100% !important;
+            display: block !important;
+        }
     </style>
 </head>
 <body>
@@ -329,8 +341,7 @@
                                    title="개별 배점 설정 (나머지 문항은 자동 조정)">
                             <button type="button" class="reset-score-btn" 
                                     onclick="resetToDefaultScore({{ q.id }}, {{ "%.1f"|format(exam.total_score / questions|length) }})"
-                                    title="기본 배점으로 되돌리기"
-                                    style="margin-top: 2px; padding: 2px 6px; font-size: 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                                    title="기본 배점으로 되돌리기">
                                 기본값
                             </button>
                         </td>
