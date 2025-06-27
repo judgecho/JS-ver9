@@ -347,6 +347,15 @@ def edit_exam(exam_id):
         exam.title = request.form['title']
         exam.category = request.form.get('category', '기타')
         
+        # 기본 배점 일괄 변경 시 총점도 자동 갱신
+        if 'new_total_score' in request.form:
+            try:
+                new_total = float(request.form['new_total_score'])
+                exam.total_score = new_total
+                print(f"총점이 기본 배점 일괄 변경에 따라 {new_total}점으로 자동 갱신됨")
+            except Exception as e:
+                print(f"총점 자동 갱신 오류: {e}")
+        
         # 문항 수 변경 처리
         if 'update_question_count' in request.form:
             new_question_count = int(request.form.get('question_count', len(questions)))

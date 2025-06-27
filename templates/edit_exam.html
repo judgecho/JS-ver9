@@ -160,6 +160,59 @@
         .btn-warning:hover {
             background-color: #e0a800;
         }
+        .answer-choices {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .choice-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            border: 2px solid #dee2e6;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            justify-content: center;
+            background: #fff;
+            transition: border 0.2s, box-shadow 0.2s;
+            position: relative;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .choice-btn.selected {
+            border: 2.5px solid #007bff;
+            background: #e3f0ff;
+            box-shadow: 0 0 0 2px #007bff33;
+        }
+        .choice-btn:hover {
+            border: 2.5px solid #007bff;
+        }
+        .choice-circle {
+            display: block;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #f1f3f4;
+            color: #333;
+            line-height: 28px;
+            text-align: center;
+            font-size: 16px;
+        }
+        .choice-btn.selected .choice-circle {
+            background: #007bff;
+            color: #fff;
+        }
+        .choice-check {
+            display: none;
+            color: #007bff;
+            font-size: 14px;
+            margin-top: 2px;
+        }
+        .choice-btn.selected .choice-check {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -247,37 +300,14 @@
                         <input type="number" name="number_{{ q.id }}" value="{{ q.question_number or loop.index }}" class="number-input">
                     </td>
                     <td>
-                      <div class="choices-edit">
-                        <div style="display:flex;align-items:center;gap:4px;">
-                          <input type="radio" id="answer_{{q.id}}_1" name="answer_{{q.id}}" value="1" 
-                                 {% if q.answer == '1' %}checked{% endif %}>
-                          <input type="text" name="choice1_{{q.id}}" value="{{ q.choice1 or '' }}" 
-                                 placeholder="보기 1" class="choice-input">
-                        </div>
-                        <div style="display:flex;align-items:center;gap:4px;">
-                          <input type="radio" id="answer_{{q.id}}_2" name="answer_{{q.id}}" value="2" 
-                                 {% if q.answer == '2' %}checked{% endif %}>
-                          <input type="text" name="choice2_{{q.id}}" value="{{ q.choice2 or '' }}" 
-                                 placeholder="보기 2" class="choice-input">
-                        </div>
-                        <div style="display:flex;align-items:center;gap:4px;">
-                          <input type="radio" id="answer_{{q.id}}_3" name="answer_{{q.id}}" value="3" 
-                                 {% if q.answer == '3' %}checked{% endif %}>
-                          <input type="text" name="choice3_{{q.id}}" value="{{ q.choice3 or '' }}" 
-                                 placeholder="보기 3" class="choice-input">
-                        </div>
-                        <div style="display:flex;align-items:center;gap:4px;">
-                          <input type="radio" id="answer_{{q.id}}_4" name="answer_{{q.id}}" value="4" 
-                                 {% if q.answer == '4' %}checked{% endif %}>
-                          <input type="text" name="choice4_{{q.id}}" value="{{ q.choice4 or '' }}" 
-                                 placeholder="보기 4" class="choice-input">
-                        </div>
-                        <div style="display:flex;align-items:center;gap:4px;">
-                          <input type="radio" id="answer_{{q.id}}_5" name="answer_{{q.id}}" value="5" 
-                                 {% if q.answer == '5' %}checked{% endif %}>
-                          <input type="text" name="choice5_{{q.id}}" value="{{ q.choice5 or '' }}" 
-                                 placeholder="보기 5" class="choice-input">
-                        </div>
+                      <div class="choices-edit answer-choices" data-qid="{{q.id}}">
+                        {% for i in range(1, 6) %}
+                        <label class="choice-btn {% if q.answer == i|string %}selected{% endif %}" data-choice="{{i}}">
+                          <input type="radio" id="answer_{{q.id}}_{{i}}" name="answer_{{q.id}}" value="{{i}}" {% if q.answer == i|string %}checked{% endif %} style="display:none;">
+                          <span class="choice-circle">{{i}}</span>
+                          <span class="choice-check">✔</span>
+                        </label>
+                        {% endfor %}
                       </div>
                     </td>
                     <td style="text-align: center;">
@@ -519,10 +549,37 @@
             updateTotalScore();
             const infoDisplay = document.querySelector('.scoring-info .info');
             if (infoDisplay) {
-                infoDisplay.textContent = `✅ 모든 문항의 배점이 ${newDefault}점으로 변경되었습니다.`;
+                infoDisplay.textContent = `✅ 모든 문항의 배점이 ${newDefault}점으로 변경되었습니다. 저장을 누르면 총점도 자동으로 맞춰집니다.`;
                 infoDisplay.style.color = 'green';
             }
+            // 총점도 자동으로 맞추기 위한 hidden input 추가
+            const form = document.querySelector('form');
+            let totalInput = document.getElementById('newTotalScoreInput');
+            if (!totalInput) {
+                totalInput = document.createElement('input');
+                totalInput.type = 'hidden';
+                totalInput.id = 'newTotalScoreInput';
+                totalInput.name = 'new_total_score';
+                form.appendChild(totalInput);
+            }
+            totalInput.value = (scoreInputs.length * newDefault).toFixed(1);
         }
+        
+        // 정답 선택 클릭 UI
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.answer-choices').forEach(function(group) {
+                group.querySelectorAll('.choice-btn').forEach(function(btn) {
+                    btn.addEventListener('click', function(e) {
+                        // 모든 선택 해제
+                        group.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('selected'));
+                        // 선택 표시
+                        btn.classList.add('selected');
+                        // 실제 라디오 버튼 체크
+                        btn.querySelector('input[type="radio"]').checked = true;
+                    });
+                });
+            });
+        });
     </script>
 </body>
 </html>
