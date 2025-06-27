@@ -54,6 +54,47 @@
         .change-numbers-btn:hover {
             background-color: #1e7e34 !important;
         }
+        .scoring-info {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background-color: white;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        .info-item .label {
+            font-weight: bold;
+            color: #495057;
+        }
+        .info-item .value {
+            font-weight: bold;
+            color: #007bff;
+        }
+        .scoring-controls {
+            margin-top: 15px;
+        }
+        .scoring-controls .btn {
+            margin-bottom: 10px;
+        }
+        .info.small {
+            font-size: 13px;
+            color: #6c757d;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -71,30 +112,35 @@
                 <input type="text" name="category" value="{{ exam.category if exam.category else '' }}">
             </div>
             
-            <!-- 배점 정보 표시 영역 -->
-            <div style="margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #007bff;">
-                <div id="total-score-display" style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">
-                    총점: {{ "%.1f"|format(questions|sum(attribute='score')) }}점
+            <div class="scoring-info">
+              <h4>배점 정보</h4>
+              <div class="info-grid">
+                <div class="info-item">
+                  <span class="label">총점:</span>
+                  <span class="value">{{ exam.total_score }}점</span>
                 </div>
-                <div id="score-info" style="font-size: 14px; color: #666;">
-                    💡 배점을 수동으로 변경하면 나머지 문항들의 배점이 자동으로 조정되어 총점이 100점이 됩니다.
+                <div class="info-item">
+                  <span class="label">기본 배점:</span>
+                  <span class="value">{{ "%.1f"|format(exam.total_score / questions|length) }}점</span>
                 </div>
-                
-                <!-- 기본 배점 정보 표시 -->
-                <div style="margin-top: 15px; padding: 10px; background-color: #e8f4fd; border-radius: 4px; border-left: 3px solid #17a2b8;">
-                    <div style="font-weight: bold; color: #17a2b8; margin-bottom: 5px;">📊 기본 배점 정보</div>
-                    <div style="font-size: 13px; color: #495057;">
-                        • 문항 수: {{ questions|length }}개<br>
-                        • 기본 배점: {{ "%.1f"|format(100 / questions|length) }}점<br>
-                        • 총점: 100점<br>
-                        • 개별 배점 변경 가능: ✅
-                    </div>
+                <div class="info-item">
+                  <span class="label">문항 수:</span>
+                  <span class="value">{{ questions|length }}개</span>
                 </div>
+              </div>
+              
+              <div class="scoring-controls">
+                <button type="button" class="btn btn-secondary" onclick="resetAllScores()">
+                  모든 문항을 기본 배점으로 초기화
+                </button>
+                <div class="info small">
+                  💡 개별 문항의 배점을 자유롭게 변경할 수 있습니다. 총점은 자동으로 조정됩니다.
+                </div>
+              </div>
             </div>
             
             <div class="action-buttons">
                 <button type="submit" name="change_numbers" class="change-numbers-btn">번호 변경 적용</button>
-                <button type="button" onclick="resetAllScores()" style="background-color: #6c757d; margin-right: 10px;">모든 배점 기본값으로</button>
                 <button type="submit">저장</button>
             </div>
             
@@ -158,7 +204,7 @@
                                step="0.1" min="0" max="100" class="score-input"
                                title="개별 배점 설정 (나머지 문항은 자동 조정)">
                         <button type="button" class="reset-score-btn" 
-                                onclick="resetToDefaultScore({{ q.id }}, {{ "%.1f"|format(100 / questions|length) }})"
+                                onclick="resetToDefaultScore({{ q.id }}, {{ "%.1f"|format(exam.total_score / questions|length) }})"
                                 title="기본 배점으로 되돌리기"
                                 style="margin-top: 2px; padding: 2px 6px; font-size: 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer;">
                             기본값
@@ -170,7 +216,6 @@
             
             <div class="action-buttons">
                 <button type="submit" name="change_numbers" class="change-numbers-btn">번호 변경 적용</button>
-                <button type="button" onclick="resetAllScores()" style="background-color: #6c757d; margin-right: 10px;">모든 배점 기본값으로</button>
                 <button type="submit">저장</button>
             </div>
         </form>
@@ -208,34 +253,31 @@
                 totalScore += score;
             });
             
-            // 총점 표시 업데이트
-            const totalDisplay = document.getElementById('total-score-display');
+            // 총점 표시 업데이트 (실시간 계산)
+            const totalDisplay = document.querySelector('.scoring-info .value');
             if (totalDisplay) {
-                totalDisplay.textContent = `총점: ${totalScore.toFixed(1)}점`;
+                totalDisplay.textContent = `${totalScore.toFixed(1)}점`;
                 
-                if (totalScore > 100) {
+                if (totalScore > {{ exam.total_score }}) {
                     totalDisplay.style.color = 'red';
-                    totalDisplay.textContent += ' (100점 초과)';
-                } else if (totalScore === 100) {
+                } else if (totalScore === {{ exam.total_score }}) {
                     totalDisplay.style.color = 'green';
-                    totalDisplay.textContent += ' (완벽!)';
                 } else {
                     totalDisplay.style.color = 'orange';
-                    totalDisplay.textContent += ` (${(100 - totalScore).toFixed(1)}점 부족)`;
                 }
             }
             
             // 안내 메시지 업데이트
-            const infoDisplay = document.getElementById('score-info');
+            const infoDisplay = document.querySelector('.scoring-info .info');
             if (infoDisplay) {
-                if (totalScore > 100) {
-                    infoDisplay.textContent = '⚠️ 수동 배점이 100점을 초과합니다. 저장 시 나머지 문항들의 배점이 0점으로 설정됩니다.';
+                if (totalScore > {{ exam.total_score }}) {
+                    infoDisplay.textContent = `⚠️ 수동 배점이 {{ exam.total_score }}점을 초과합니다. 저장 시 나머지 문항들의 배점이 0점으로 설정됩니다.`;
                     infoDisplay.style.color = 'red';
-                } else if (totalScore === 100) {
-                    infoDisplay.textContent = '✅ 배점이 완벽하게 100점으로 설정되었습니다.';
+                } else if (totalScore === {{ exam.total_score }}) {
+                    infoDisplay.textContent = '✅ 배점이 완벽하게 설정되었습니다.';
                     infoDisplay.style.color = 'green';
                 } else {
-                    const remaining = 100 - totalScore;
+                    const remaining = {{ exam.total_score }} - totalScore;
                     const remainingQuestions = scoreInputs.length - manualCount;
                     if (remainingQuestions > 0) {
                         const avgScore = (remaining / remainingQuestions).toFixed(1);
@@ -309,7 +351,7 @@
         // 모든 배점을 기본값으로 되돌리기
         function resetAllScores() {
             const questionCount = {{ questions|length }};
-            const defaultScore = (100 / questionCount).toFixed(1);
+            const defaultScore = ({{ exam.total_score }} / questionCount).toFixed(1);
             
             const scoreInputs = document.querySelectorAll('input[name^="score_"]');
             scoreInputs.forEach(input => {
@@ -329,7 +371,7 @@
             updateTotalScore();
             
             // 사용자에게 알림
-            const infoDisplay = document.getElementById('score-info');
+            const infoDisplay = document.querySelector('.scoring-info .info');
             if (infoDisplay) {
                 infoDisplay.textContent = '✅ 모든 배점이 기본값으로 초기화되었습니다.';
                 infoDisplay.style.color = 'green';

@@ -118,14 +118,25 @@
     <div class="scoring-options">
       <label>배점 설정 방식
         <select name="scoring_method" id="scoringMethod">
-          <option value="auto">자동 균등 분배 (100점 ÷ 문항 수)</option>
+          <option value="auto">자동 균등 분배 (총점 ÷ 문항 수)</option>
           <option value="manual">수동 설정</option>
         </select>
       </label>
 
+      <div id="autoScoringOptions">
+        <label>총점
+          <input name="auto_total_score" type="number" min="1" max="1000" value="100" placeholder="예: 100">
+        </label>
+        
+        <div class="info small">
+          💡 설정한 총점을 문항 수로 나누어 균등 분배합니다.<br>
+          예: 총점 100점, 문항 5개 → 각 문항 20점
+        </div>
+      </div>
+
       <div id="manualScoringOptions" style="display: none;">
         <label>기본 배점 (문항당)
-          <input name="default_score" type="number" min="0" max="100" step="0.1" placeholder="예: 20.0">
+          <input name="default_score" type="number" min="0" max="1000" step="0.1" placeholder="예: 20.0">
         </label>
         
         <label>총점
@@ -134,7 +145,8 @@
         
         <div class="info small">
           💡 기본 배점 × 문항 수 = 총점이 되도록 설정하세요.<br>
-          예: 문항 5개, 기본 배점 20점 → 총점 100점
+          예: 문항 5개, 기본 배점 20점 → 총점 100점<br>
+          또는 문항 10개, 기본 배점 15점 → 총점 150점
         </div>
       </div>
     </div>
@@ -159,31 +171,52 @@
 
     // 배점 설정 방식 변경 시 UI 업데이트
     document.getElementById('scoringMethod').addEventListener('change', function() {
+      const autoOptions = document.getElementById('autoScoringOptions');
       const manualOptions = document.getElementById('manualScoringOptions');
+      
       if (this.value === 'manual') {
+        autoOptions.style.display = 'none';
         manualOptions.style.display = 'block';
       } else {
+        autoOptions.style.display = 'block';
         manualOptions.style.display = 'none';
       }
+      
+      updateTotalScore();
     });
 
-    // 문항 수와 기본 배점 변경 시 총점 자동 계산
+    // 문항 수와 배점 변경 시 실시간 계산
     function updateTotalScore() {
       const questionCount = parseInt(document.querySelector('input[name="question_count"]').value) || 0;
-      const defaultScore = parseFloat(document.querySelector('input[name="default_score"]').value) || 0;
-      const totalScoreInput = document.querySelector('input[name="total_score"]');
+      const scoringMethod = document.getElementById('scoringMethod').value;
       
-      if (questionCount > 0 && defaultScore > 0) {
-        const calculatedTotal = questionCount * defaultScore;
-        totalScoreInput.value = calculatedTotal;
-        totalScoreInput.style.backgroundColor = '#e8f5e8';
+      if (scoringMethod === 'auto') {
+        const totalScore = parseFloat(document.querySelector('input[name="auto_total_score"]').value) || 100;
+        const scorePerQuestion = questionCount > 0 ? (totalScore / questionCount).toFixed(1) : 0;
+        
+        // 자동 계산 결과 표시
+        const infoDisplay = document.querySelector('#autoScoringOptions .info');
+        if (infoDisplay && questionCount > 0) {
+          infoDisplay.innerHTML = `💡 설정한 총점을 문항 수로 나누어 균등 분배합니다.<br>
+            예: 총점 ${totalScore}점, 문항 ${questionCount}개 → 각 문항 ${scorePerQuestion}점`;
+        }
       } else {
-        totalScoreInput.style.backgroundColor = '#fff';
+        const defaultScore = parseFloat(document.querySelector('input[name="default_score"]').value) || 0;
+        const totalScoreInput = document.querySelector('input[name="total_score"]');
+        
+        if (questionCount > 0 && defaultScore > 0) {
+          const calculatedTotal = questionCount * defaultScore;
+          totalScoreInput.value = calculatedTotal;
+          totalScoreInput.style.backgroundColor = '#e8f5e8';
+        } else {
+          totalScoreInput.style.backgroundColor = '#fff';
+        }
       }
     }
 
     // 이벤트 리스너 추가
     document.querySelector('input[name="question_count"]').addEventListener('input', updateTotalScore);
+    document.querySelector('input[name="auto_total_score"]').addEventListener('input', updateTotalScore);
     document.querySelector('input[name="default_score"]').addEventListener('input', updateTotalScore);
 
     // Update final category before form submission
