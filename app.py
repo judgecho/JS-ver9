@@ -344,8 +344,40 @@ def edit_exam(exam_id):
             print(f"최종 배점 조정 완료: 총점 {sum(q.score for q in questions):.1f}점")
         
         # 시험 정보 업데이트
-        exam.title = request.form.get('title', exam.title or '')
-        exam.category = request.form.get('category', exam.category if hasattr(exam, 'category') else '')
+        exam.title = request.form['title']
+        exam.category = request.form.get('category', '기타')
+        
+        # 문항 수 변경 처리
+        if 'update_question_count' in request.form:
+            new_question_count = int(request.form.get('question_count', len(questions)))
+            current_question_count = len(questions)
+            
+            if new_question_count != current_question_count:
+                print(f"문항 수 변경: {current_question_count}개 → {new_question_count}개")
+                
+                # 기존 문항들 삭제
+                Question.query.filter_by(exam_id=exam_id).delete()
+                
+                # 새로운 문항들 생성
+                default_score = exam.total_score / new_question_count
+                for i in range(1, new_question_count + 1):
+                    q = Question(
+                        exam_id=exam.id,
+                        question_number=i,
+                        choice1='보기 1',
+                        choice2='보기 2',
+                        choice3='보기 3',
+                        choice4='보기 4',
+                        choice5='보기 5',
+                        answer='',
+                        score=round(default_score, 1)
+                    )
+                    db.session.add(q)
+                
+                print(f"새로운 문항 {new_question_count}개 생성 완료, 문항당 {default_score:.1f}점")
+                
+                # questions 리스트 업데이트
+                questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
         
         db.session.commit()
         
