@@ -17,34 +17,30 @@
         .question-table th {
             background-color: #f2f2f2;
         }
-        .number-input {
-            width: 30px;
+        .number-input, .answer-input, .score-input {
+            width: 48px;
             text-align: center;
-            font-size: 11px;
-            padding: 3px;
+            font-size: 1.3em;
+            padding: 4px 2px;
+            border-radius: 6px;
         }
-        .score-input {
-            width: 50px;
-            text-align: center;
-            font-size: 11px;
-            padding: 3px;
+        .question-table td.number-col, .question-table td.answer-col, .question-table td.score-col {
+            width: 60px;
+            min-width: 48px;
+            max-width: 70px;
+            padding: 4px 2px;
         }
-        .answer-input {
-            width: 40px;
-            text-align: center;
-            font-size: 11px;
-            padding: 3px;
-            border: 1px solid #ced4da;
-            border-radius: 3px;
-        }
-        .choice-input {
-            width: 200px;
+        .question-table td.choices-col {
+            min-width: 260px;
+            width: 40%;
+            padding: 8px 10px;
         }
         .choices-edit {
             display: flex;
             flex-direction: row;
-            gap: 4px;
+            gap: 18px;
             justify-content: center;
+            align-items: center;
         }
         .action-buttons {
             margin: 20px 0;
@@ -185,65 +181,26 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            border: 2px solid #dee2e6;
-            border-radius: 50%;
-            width: 45px;
-            height: 45px;
-            background: #fff;
-            transition: all 0.3s ease;
-            position: relative;
+            border: 2.5px solid #007bff;
+            border-radius: 22px;
+            width: 60px;
+            height: 38px;
+            background: #f8f9fa;
+            transition: all 0.2s;
             font-weight: bold;
-            font-size: 16px;
-            color: #495057;
-            user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
+            font-size: 1.5em;
+            color: #007bff;
+            box-shadow: 0 2px 8px rgba(0,123,255,0.08);
         }
-        .choice-btn:hover {
-            border: 2.5px solid #007bff;
-            transform: scale(1.1);
-            box-shadow: 0 4px 8px rgba(0,123,255,0.3);
-            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
-        }
-        .choice-btn.selected {
-            border: 2.5px solid #007bff;
-            background: linear-gradient(135deg, #007bff, #0056b3);
-            color: white;
-            box-shadow: 0 0 0 3px rgba(0,123,255,0.3), 0 4px 12px rgba(0,123,255,0.4);
-            transform: scale(1.05);
-        }
-        .choice-btn.selected::after {
-            content: '✓';
-            position: absolute;
-            top: -2px;
-            right: -2px;
-            background: #28a745;
-            color: white;
-            border-radius: 50%;
-            width: 18px;
-            height: 18px;
-            font-size: 11px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            animation: bounceIn 0.5s ease;
-        }
-        @keyframes bounceIn {
-            0% { transform: scale(0); opacity: 0; }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        .choice-btn.selected {
-            animation: pulse 2s infinite;
+        .choice-btn:hover, .choice-btn.selected {
+            background: linear-gradient(135deg, #007bff 60%, #0056b3 100%);
+            color: #fff;
+            border-color: #0056b3;
+            box-shadow: 0 4px 16px rgba(0,123,255,0.18);
+            transform: scale(1.08);
         }
         .choice-btn:active {
-            transform: scale(0.95);
+            transform: scale(0.98);
         }
         .choice-btn:nth-child(1) { border-color: #e74c3c; }
         .choice-btn:nth-child(1):hover { border-color: #c0392b; background: linear-gradient(135deg, #ffebee, #ffcdd2); }
@@ -341,17 +298,17 @@
             <div class="table-responsive">
                 <table class="question-table">
                     <tr>
-                        <th>번호</th>
-                        <th>보기 선택</th>
-                        <th>정답</th>
-                        <th>배점</th>
+                        <th class="number-col">번호</th>
+                        <th class="choices-col">보기 선택</th>
+                        <th class="answer-col">정답</th>
+                        <th class="score-col">배점</th>
                     </tr>
                     {% for q in questions %}
                     <tr data-qid="{{ q.id }}">
-                        <td style="text-align: center;">
+                        <td class="number-col" style="text-align: center;">
                             <input type="number" name="number_{{ q.id }}" value="{{ q.question_number or loop.index }}" class="number-input">
                         </td>
-                        <td>
+                        <td class="choices-col">
                           <div class="choices-edit answer-choices" data-qid="{{q.id}}">
                             {% for i in range(1, 6) %}
                             <label class="choice-btn {% if q.answer == i|string %}selected{% endif %}" data-choice="{{i}}">
@@ -361,19 +318,12 @@
                             {% endfor %}
                           </div>
                         </td>
-                        <td style="text-align: center;">
+                        <td class="answer-col" style="text-align: center;">
                             <input type="text" name="answer_{{ q.id }}" value="{{ q.answer or '' }}" 
                                    class="answer-input" placeholder="정답"
-                                   title="정답을 직접 입력하거나 아래 보기를 클릭하세요">
-                            <div class="choices-edit answer-choices" data-qid="{{q.id}}">
-                                {% for i in range(1, 6) %}
-                                <label class="choice-btn {% if q.answer == i|string %}selected{% endif %}" data-choice="{{i}}">
-                                    {{i}}
-                                </label>
-                                {% endfor %}
-                            </div>
+                                   title="정답을 입력하세요">
                         </td>
-                        <td style="text-align: center;">
+                        <td class="score-col" style="text-align: center;">
                             <input type="number" name="score_{{ q.id }}" value="{{ q.score or 0 }}" 
                                    step="0.1" min="0" max="100" class="score-input"
                                    title="개별 배점 설정 (나머지 문항은 자동 조정)">
@@ -628,30 +578,6 @@
             }
             totalInput.value = (scoreInputs.length * newDefault).toFixed(1);
         }
-        
-        // 정답 선택 클릭 UI
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('.answer-choices').forEach(function(group) {
-                group.querySelectorAll('.choice-btn').forEach(function(btn) {
-                    btn.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        const qid = group.getAttribute('data-qid');
-                        const choice = this.getAttribute('data-choice');
-                        
-                        // 모든 선택 해제
-                        group.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('selected'));
-                        // 선택 표시
-                        this.classList.add('selected');
-                        
-                        // 정답 입력 필드에 값 설정
-                        const answerInput = document.querySelector(`input[name="answer_${qid}"]`);
-                        if (answerInput) {
-                            answerInput.value = choice;
-                        }
-                    });
-                });
-            });
-        });
     </script>
 </body>
 </html>
