@@ -383,7 +383,8 @@ def edit_exam(exam_id):
         flash('시험이 성공적으로 업데이트되었습니다.', 'success')
         return redirect(url_for('edit_exam', exam_id=exam_id))
     
-    return render_template('edit_exam.html', exam=exam, questions=questions)
+    return render_template('edit_exam.html', exam=exam, questions=questions, 
+                         default_score_per_question=round(100 / len(questions), 1) if questions else 0)
 
 @app.route('/logs')
 def view_logs():

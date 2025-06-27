@@ -79,10 +79,22 @@
                 <div id="score-info" style="font-size: 14px; color: #666;">
                     💡 배점을 수동으로 변경하면 나머지 문항들의 배점이 자동으로 조정되어 총점이 100점이 됩니다.
                 </div>
+                
+                <!-- 기본 배점 정보 표시 -->
+                <div style="margin-top: 15px; padding: 10px; background-color: #e8f4fd; border-radius: 4px; border-left: 3px solid #17a2b8;">
+                    <div style="font-weight: bold; color: #17a2b8; margin-bottom: 5px;">📊 기본 배점 정보</div>
+                    <div style="font-size: 13px; color: #495057;">
+                        • 문항 수: {{ questions|length }}개<br>
+                        • 기본 배점: {{ "%.1f"|format(100 / questions|length) }}점<br>
+                        • 총점: 100점<br>
+                        • 개별 배점 변경 가능: ✅
+                    </div>
+                </div>
             </div>
             
             <div class="action-buttons">
                 <button type="submit" name="change_numbers" class="change-numbers-btn">번호 변경 적용</button>
+                <button type="button" onclick="resetAllScores()" style="background-color: #6c757d; margin-right: 10px;">모든 배점 기본값으로</button>
                 <button type="submit">저장</button>
             </div>
             
@@ -143,7 +155,14 @@
                     </td>
                     <td style="text-align: center;">
                         <input type="number" name="score_{{ q.id }}" value="{{ q.score or 0 }}" 
-                               step="0.1" min="0" max="100" class="score-input">
+                               step="0.1" min="0" max="100" class="score-input"
+                               title="개별 배점 설정 (나머지 문항은 자동 조정)">
+                        <button type="button" class="reset-score-btn" 
+                                onclick="resetToDefaultScore({{ q.id }}, {{ "%.1f"|format(100 / questions|length) }})"
+                                title="기본 배점으로 되돌리기"
+                                style="margin-top: 2px; padding: 2px 6px; font-size: 10px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                            기본값
+                        </button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -151,6 +170,7 @@
             
             <div class="action-buttons">
                 <button type="submit" name="change_numbers" class="change-numbers-btn">번호 변경 적용</button>
+                <button type="button" onclick="resetAllScores()" style="background-color: #6c757d; margin-right: 10px;">모든 배점 기본값으로</button>
                 <button type="submit">저장</button>
             </div>
         </form>
@@ -253,6 +273,23 @@
             });
         }
         
+        // 기본 배점으로 되돌리기
+        function resetToDefaultScore(questionId, defaultScore) {
+            const scoreInput = document.querySelector(`input[name="score_${questionId}"]`);
+            if (scoreInput) {
+                scoreInput.value = defaultScore;
+                updateTotalScore();
+                
+                // 시각적 피드백
+                scoreInput.style.backgroundColor = '#d4edda';
+                scoreInput.style.borderColor = '#28a745';
+                setTimeout(() => {
+                    scoreInput.style.backgroundColor = '';
+                    scoreInput.style.borderColor = '';
+                }, 1000);
+            }
+        }
+        
         // 배점 입력 필드에 이벤트 리스너 추가
         document.addEventListener('DOMContentLoaded', function() {
             const scoreInputs = document.querySelectorAll('input[name^="score_"]');
@@ -268,6 +305,36 @@
             // 초기 총점 계산
             updateTotalScore();
         });
+        
+        // 모든 배점을 기본값으로 되돌리기
+        function resetAllScores() {
+            const questionCount = {{ questions|length }};
+            const defaultScore = (100 / questionCount).toFixed(1);
+            
+            const scoreInputs = document.querySelectorAll('input[name^="score_"]');
+            scoreInputs.forEach(input => {
+                input.value = defaultScore;
+                input.style.backgroundColor = '#d4edda';
+                input.style.borderColor = '#28a745';
+            });
+            
+            // 1초 후 스타일 복원
+            setTimeout(() => {
+                scoreInputs.forEach(input => {
+                    input.style.backgroundColor = '';
+                    input.style.borderColor = '';
+                });
+            }, 1000);
+            
+            updateTotalScore();
+            
+            // 사용자에게 알림
+            const infoDisplay = document.getElementById('score-info');
+            if (infoDisplay) {
+                infoDisplay.textContent = '✅ 모든 배점이 기본값으로 초기화되었습니다.';
+                infoDisplay.style.color = 'green';
+            }
+        }
     </script>
 </body>
 </html>
