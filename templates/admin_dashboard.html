@@ -2,23 +2,52 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-      .top-menu { margin-bottom: 20px; }
-      .top-menu a { display: inline-block; margin-right: 12px; padding: 8px 18px; background: #007bff; color: #fff; border-radius: 5px; text-decoration: none; font-weight: bold; }
+      .top-menu { 
+        margin-bottom: 20px; 
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .top-menu a { 
+        display: inline-block; 
+        padding: 8px 18px; 
+        background: #007bff; 
+        color: #fff; 
+        border-radius: 5px; 
+        text-decoration: none; 
+        font-weight: bold; 
+      }
       .top-menu a:hover { background: #0056b3; }
+      
+      @media (max-width: 768px) {
+        .top-menu {
+          flex-direction: column;
+        }
+        .top-menu a {
+          text-align: center;
+        }
+      }
     </style>
 </head>
 <body>
-    <div class="top-menu">
-      <a href="/admin/students">학생 관리</a>
-      <a href="/admin/class_stats">반별 통계</a>
-      <a href="/create_exam" style="background:#28a745;">시험 생성</a>
-      <a href="/upload_exam" style="background:#ffc107; color:#222;">시험 업로드</a>
+    <div class="container">
+        <div class="top-menu">
+          <a href="/admin/students">학생 관리</a>
+          <a href="/admin/class_stats">반별 통계</a>
+          <a href="/create_exam" style="background:#28a745;">시험 생성</a>
+          <a href="/upload_exam" style="background:#ffc107; color:#222;">시험 업로드</a>
+        </div>
+        <h2>시험별 통계</h2>
+        <div style="position: relative; height: 400px;">
+            <canvas id="examChart" width="600" height="300"></canvas>
+        </div>
     </div>
-    <h2>시험별 통계</h2>
-    <canvas id="examChart" width="600" height="300"></canvas>
+    
     <script>
         const ctx = document.getElementById('examChart').getContext('2d');
         const chart = new Chart(ctx, {
@@ -40,6 +69,8 @@
                 }]
             },
             options: {
+                responsive: true,
+                maintainAspectRatio: false,
                 scales: {
                     y: { beginAtZero: true }
                 }
