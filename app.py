@@ -308,7 +308,7 @@ def edit_exam(exam_id):
         
         # 시험 정보 업데이트
         exam.title = request.form.get('title', exam.title or '')
-        exam.category = request.form.get('category', getattr(exam, 'category', '') or '')
+        exam.category = request.form.get('category', exam.category if hasattr(exam, 'category') else '')
         
         db.session.commit()
         flash('시험이 성공적으로 업데이트되었습니다.', 'success')

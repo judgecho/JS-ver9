@@ -66,6 +66,11 @@
                 <input type="text" name="title" value="{{ exam.title }}" required>
             </div>
             
+            <div>
+                <label>카테고리:</label>
+                <input type="text" name="category" value="{{ exam.category if exam.category else '' }}">
+            </div>
+            
             <div class="action-buttons">
                 <button type="submit" name="change_numbers" class="change-numbers-btn">번호 변경 적용</button>
                 <button type="submit">저장</button>
