@@ -362,12 +362,62 @@
     </div>
 
     <script>
+        // 정답 선택 버튼 클릭 시 정답란에 자동 입력
+        document.addEventListener('DOMContentLoaded', function() {
+            // 정답 선택 버튼 클릭 이벤트
+            document.querySelectorAll('.choice-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const qid = this.closest('.choices-edit').getAttribute('data-qid');
+                    const choice = this.getAttribute('data-choice');
+                    
+                    // 라디오 버튼 체크
+                    const radio = this.querySelector('input[type="radio"]');
+                    radio.checked = true;
+                    
+                    // 정답란에 입력
+                    const answerInput = document.querySelector(`input[name="answer_${qid}"]`);
+                    if (answerInput) {
+                        answerInput.value = choice;
+                    }
+                    
+                    // 선택 상태 시각적 업데이트
+                    document.querySelectorAll(`.choices-edit[data-qid="${qid}"] .choice-btn`).forEach(b => {
+                        b.classList.remove('selected');
+                    });
+                    this.classList.add('selected');
+                });
+            });
+            
+            // 정답란 입력 필드 이벤트
+            document.querySelectorAll('.answer-input').forEach(input => {
+                input.addEventListener('input', function() {
+                    const qid = this.name.split('_')[1];
+                    const value = this.value;
+                    
+                    // 정답 선택 버튼 상태 업데이트
+                    document.querySelectorAll(`.choices-edit[data-qid="${qid}"] .choice-btn`).forEach(btn => {
+                        btn.classList.remove('selected');
+                        const radio = btn.querySelector('input[type="radio"]');
+                        if (btn.getAttribute('data-choice') === value) {
+                            btn.classList.add('selected');
+                            radio.checked = true;
+                        } else {
+                            radio.checked = false;
+                        }
+                    });
+                });
+            });
+        });
+        
         // 라디오 버튼 변경 시 정답 표시 업데이트
         document.querySelectorAll('input[type="radio"]').forEach(radio => {
             radio.addEventListener('change', function() {
                 const qid = this.name.split('_')[1];
                 const answer = this.value;
-                document.getElementById(`selected_answer_${qid}`).textContent = answer;
+                const answerInput = document.querySelector(`input[name="answer_${qid}"]`);
+                if (answerInput) {
+                    answerInput.value = answer;
+                }
             });
         });
         
