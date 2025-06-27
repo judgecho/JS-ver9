@@ -316,18 +316,12 @@ def edit_exam(exam_id):
             print(f"수동 배점 변경 감지: {manual_scores}")
             print(f"수동 배점 총합: {total_manual_score}")
             
-            # 수동 배점이 총점을 초과하는 경우 처리
-            if total_manual_score > exam.total_score:
-                print(f"수동 배점이 총점({exam.total_score}점)을 초과합니다. 나머지 문항을 0점으로 설정")
-                # 수동 배점이 설정되지 않은 문항들을 0점으로 설정
-                for q in questions:
-                    if q.id not in manual_scores:
-                        q.score = 0
-            else:
-                # 나머지 문항들의 배점을 자동 조정
-                remaining_questions = [q for q in questions if q.id not in manual_scores]
-                if remaining_questions:
-                    remaining_score = exam.total_score - total_manual_score
+            # 수동 배점이 총점을 초과하는 경우에도 나머지 문항을 0점으로 설정하지 않음
+            # 단순히 현재 상태를 유지하고 총점만 표시
+            remaining_questions = [q for q in questions if q.id not in manual_scores]
+            if remaining_questions:
+                remaining_score = exam.total_score - total_manual_score
+                if remaining_score > 0:
                     score_per_remaining = remaining_score / len(remaining_questions)
                     
                     print(f"나머지 문항 {len(remaining_questions)}개, 문항당 {score_per_remaining:.1f}점")
@@ -340,6 +334,11 @@ def edit_exam(exam_id):
                     
                     for q in remaining_questions:
                         q.score = round(score_per_remaining, 1)
+                else:
+                    # 나머지 점수가 부족한 경우 나머지 문항들을 0점으로 설정
+                    print(f"나머지 점수가 부족하여 나머지 문항들을 0점으로 설정")
+                    for q in remaining_questions:
+                        q.score = 0
             
             print(f"최종 배점 조정 완료: 총점 {sum(q.score for q in questions):.1f}점")
         
