@@ -293,6 +293,9 @@ def edit_exam(exam_id):
         manual_scores = {}  # 수동으로 변경된 배점들을 저장
         total_manual_score = 0  # 수동 배점의 총합
         
+        # 세션에서 이전 수동 배점 정보 가져오기
+        session_manual_scores = session.get(f'manual_scores_{exam_id}', {})
+        
         for q in questions:
             q_id = str(q.id)
             q.choice1 = request.form.get(f'choice1_{q_id}', '')
@@ -306,12 +309,31 @@ def edit_exam(exam_id):
             score = request.form.get(f'score_{q_id}', '0')
             try:
                 new_score = float(score)
-                if new_score != q.score:  # 배점이 변경된 경우
-                    manual_scores[q.id] = new_score
-                    total_manual_score += new_score
+                original_score = q.score
+                
+                # 이 문항이 이전에 수동으로 설정된 배점인지 확인
+                was_manual = q.id in session_manual_scores
+                
+                # 배점이 변경되었는지 확인
+                if abs(new_score - original_score) > 0.01:
+                    # 사용자가 명시적으로 다른 값을 입력한 경우
+                    if not was_manual or abs(new_score - session_manual_scores.get(q.id, 0)) > 0.01:
+                        manual_scores[q.id] = new_score
+                        total_manual_score += new_score
+                        print(f"새로운 수동 배점 감지: 문항 {q.id} = {new_score}점 (기존: {original_score}점)")
+                    else:
+                        # 이전에 수동으로 설정된 배점이 그대로 유지되는 경우
+                        manual_scores[q.id] = new_score
+                        total_manual_score += new_score
+                        print(f"기존 수동 배점 유지: 문항 {q.id} = {new_score}점")
+                
                 q.score = new_score
+                
             except ValueError:
                 q.score = 0
+        
+        # 수동 배점 정보를 세션에 저장
+        session[f'manual_scores_{exam_id}'] = manual_scores
         
         # 수동 배점이 있는 경우 나머지 문항들의 배점 자동 조정
         if manual_scores:
@@ -339,7 +361,7 @@ def edit_exam(exam_id):
                     
                     # 소수점 오차 보정 (마지막 문항에 남은 점수 할당)
                     actual_total = sum(q.score for q in questions)
-                    if actual_total != 100:
+                    if abs(actual_total - 100) > 0.01:  # 0.01점 이상 차이나는 경우에만 보정
                         correction = 100 - actual_total
                         if remaining_questions:
                             remaining_questions[-1].score += correction

@@ -174,14 +174,18 @@
         function updateTotalScore() {
             const scoreInputs = document.querySelectorAll('input[name^="score_"]');
             let totalScore = 0;
-            let manualScores = 0;
+            let manualScores = {};
+            let manualCount = 0;
             
+            // 수동으로 입력된 배점 수집
             scoreInputs.forEach(input => {
                 const score = parseFloat(input.value) || 0;
-                totalScore += score;
                 if (score > 0) {
-                    manualScores++;
+                    const qid = input.name.split('_')[1];
+                    manualScores[qid] = score;
+                    manualCount++;
                 }
+                totalScore += score;
             });
             
             // 총점 표시 업데이트
@@ -212,11 +216,14 @@
                     infoDisplay.style.color = 'green';
                 } else {
                     const remaining = 100 - totalScore;
-                    const remainingQuestions = scoreInputs.length - manualScores;
+                    const remainingQuestions = scoreInputs.length - manualCount;
                     if (remainingQuestions > 0) {
                         const avgScore = (remaining / remainingQuestions).toFixed(1);
                         infoDisplay.textContent = `💡 저장 시 나머지 ${remainingQuestions}개 문항의 배점이 각각 ${avgScore}점으로 자동 조정됩니다.`;
                         infoDisplay.style.color = 'blue';
+                        
+                        // 실시간으로 나머지 문항들의 배점 미리보기 표시
+                        showPreviewScores(manualScores, avgScore);
                     } else {
                         infoDisplay.textContent = `⚠️ 배점이 ${totalScore.toFixed(1)}점으로 설정되어 있습니다.`;
                         infoDisplay.style.color = 'orange';
@@ -225,11 +232,37 @@
             }
         }
         
+        // 나머지 문항들의 배점 미리보기 표시
+        function showPreviewScores(manualScores, avgScore) {
+            const scoreInputs = document.querySelectorAll('input[name^="score_"]');
+            scoreInputs.forEach(input => {
+                const qid = input.name.split('_')[1];
+                if (!(qid in manualScores)) {
+                    // 미리보기 스타일 적용
+                    input.style.backgroundColor = '#e8f4fd';
+                    input.style.borderColor = '#007bff';
+                    
+                    // 툴팁 추가
+                    input.title = `자동 조정 예상 배점: ${avgScore}점`;
+                } else {
+                    // 수동 배점 스타일
+                    input.style.backgroundColor = '#fff3cd';
+                    input.style.borderColor = '#ffc107';
+                    input.title = '수동 설정 배점';
+                }
+            });
+        }
+        
         // 배점 입력 필드에 이벤트 리스너 추가
         document.addEventListener('DOMContentLoaded', function() {
             const scoreInputs = document.querySelectorAll('input[name^="score_"]');
             scoreInputs.forEach(input => {
                 input.addEventListener('input', updateTotalScore);
+                input.addEventListener('focus', function() {
+                    this.style.backgroundColor = '#fff';
+                    this.style.borderColor = '#007bff';
+                });
+                input.addEventListener('blur', updateTotalScore);
             });
             
             // 초기 총점 계산
