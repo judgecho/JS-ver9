@@ -14,6 +14,9 @@ class User(db.Model):
 class Exam(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(500))
+    duration = db.Column(db.Integer, default=60)  # 시험 시간 (분)
+    total_score = db.Column(db.Integer, default=100)  # 총점
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
     category = db.Column(db.String(50))
 

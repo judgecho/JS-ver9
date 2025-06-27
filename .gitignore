@@ -140,4 +140,16 @@ Thumbs.db
 
 # Excel files (if you don't want to track sample data)
 # *.xlsx
-# *.xls 
+# *.xls
+
+# Database files
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+
+# Uploads
+uploads/ 

@@ -190,14 +190,18 @@
     <h2>시험 편집: {{ exam.title }}</h2>
     <form method="post">
         <label>시험 제목: <input type="text" name="title" value="{{ exam.title }}"></label><br>
+        <label>시험 설명: <input type="text" name="description" value="{{ exam.description or '' }}"></label><br>
         <label>카테고리: 
             <select name="category">
                 <option value="중간고사" {% if exam.category == '중간고사' %}selected{% endif %}>중간고사</option>
                 <option value="기말고사" {% if exam.category == '기말고사' %}selected{% endif %}>기말고사</option>
                 <option value="모의고사" {% if exam.category == '모의고사' %}selected{% endif %}>모의고사</option>
             </select>
-        </label><br><br>
+        </label><br>
+        <label>시험 시간(분): <input type="number" name="duration" value="{{ exam.duration or 60 }}"></label><br>
+        <label>총점: <input type="number" name="total_score" value="{{ exam.total_score or 100 }}"></label><br><br>
         <button type="button" class="add-btn" onclick="addQuestion()">문항 추가</button>
+        <button type="button" class="add-btn" onclick="reorderQuestions()" style="background: #17a2b8;">번호 변경</button>
         <div style="margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 5px;">
             <strong>현재 총점: <span id="totalScore">0</span>점</strong>
             <span id="scoreWarning" style="color: #dc3545; margin-left: 10px; display: none;">⚠️ 총점이 100점이 아닙니다!</span>
@@ -208,7 +212,7 @@
             {% for q in questions %}
             <tr data-qid="{{ q.id }}">
                 <td style="text-align: center;">
-                    <input type="number" name="number_{{ q.id }}" value="{{ q.question_number }}" class="number-input">
+                    <input type="number" name="number_{{ q.id }}" value="{{ q.question_number or loop.index }}" class="number-input">
                 </td>
                 <td>
                   <div class="choices-edit">
@@ -222,7 +226,17 @@
                                onclick="selectAnswer({{q.id}}, {{i}})">
                                {{ i }}
                         </label>
-                        <input type="hidden" name="choice{{i}}_{{q.id}}" value="{{ q['choice' + i|string] or '' }}">
+                        {% if i == 1 %}
+                          <input type="hidden" name="choice{{i}}_{{q.id}}" value="{{ q.choice1 or '' }}">
+                        {% elif i == 2 %}
+                          <input type="hidden" name="choice{{i}}_{{q.id}}" value="{{ q.choice2 or '' }}">
+                        {% elif i == 3 %}
+                          <input type="hidden" name="choice{{i}}_{{q.id}}" value="{{ q.choice3 or '' }}">
+                        {% elif i == 4 %}
+                          <input type="hidden" name="choice{{i}}_{{q.id}}" value="{{ q.choice4 or '' }}">
+                        {% elif i == 5 %}
+                          <input type="hidden" name="choice{{i}}_{{q.id}}" value="{{ q.choice5 or '' }}">
+                        {% endif %}
                       </div>
                     {% endfor %}
                   </div>
@@ -235,6 +249,7 @@
                 </td>
                 <td style="text-align: center;">
                     <input type="number" name="score_{{ q.id }}" value="{{ q.score }}" class="score-input" 
+                           step="0.01" min="0" max="100"
                            onblur="adjustOtherScores(this)" onchange="adjustOtherScores(this)">
                 </td>
                 <td>
@@ -257,6 +272,9 @@
       <input type="hidden" name="insert_question" value="1">
       <input type="hidden" name="insert_position" id="insert_position">
     </form>
+    <form id="reorderQuestionsForm" method="post" style="display:none;">
+      <input type="hidden" name="reorder_questions" value="1">
+    </form>
     <script>
       function addQuestion() {
         document.getElementById('addQuestionForm').submit();
@@ -271,6 +289,19 @@
       function insertQuestionAfter(position) {
         document.getElementById('insert_position').value = position + 1;
         document.getElementById('insertQuestionForm').submit();
+      }
+      
+      function reorderQuestions() {
+        // 메인 폼에 reorder_questions 히든 필드 추가
+        var mainForm = document.forms[0];
+        var hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'reorder_questions';
+        hiddenInput.value = '1';
+        mainForm.appendChild(hiddenInput);
+        
+        // 메인 폼 제출
+        mainForm.submit();
       }
       
       // 정답 선택 함수
@@ -333,9 +364,9 @@
         const scoreInputs = document.querySelectorAll('input[name^="score_"]');
         let total = 0;
         scoreInputs.forEach(input => {
-          total += parseInt(input.value) || 0;
+          total += parseFloat(input.value) || 0;
         });
-        document.getElementById('totalScore').textContent = total;
+        document.getElementById('totalScore').textContent = total.toFixed(2);
         
         const warning = document.getElementById('scoreWarning');
         if(total !== 100) {
@@ -345,7 +376,7 @@
         }
       }
       
-                                    // 배점 자동 조정
+      // 배점 자동 조정
       function adjustOtherScores(changedInput) {
         setTimeout(function() {
           var scoreInputs = document.querySelectorAll('input[name^="score_"]');
@@ -356,7 +387,7 @@
             return;
           }
           
-          var changedValue = parseInt(changedInput.value) || 0;
+          var changedValue = parseFloat(changedInput.value) || 0;
           
           // 값 범위 제한
           if(changedValue > 100) {
@@ -368,41 +399,45 @@
             changedInput.value = 0;
           }
           
-          // 변경된 필드 표시
-          changedInput.style.backgroundColor = '#fff3cd';
-          changedInput.style.borderColor = '#ffc107';
+          // 변경된 필드 표시 (수동 변경임을 표시)
+          changedInput.classList.add('manually-changed');
           
-          // 나머지 필드들 찾기
-          var otherInputs = [];
+          // 수동으로 변경된 필드들의 총점 계산
+          var manualTotal = changedValue;
+          var manualCount = 1;
           for(var i = 0; i < scoreInputs.length; i++) {
-            if(scoreInputs[i] !== changedInput) {
-              otherInputs.push(scoreInputs[i]);
+            if(scoreInputs[i] !== changedInput && scoreInputs[i].classList.contains('manually-changed')) {
+              manualTotal += parseFloat(scoreInputs[i].value) || 0;
+              manualCount++;
             }
           }
           
-          if(otherInputs.length === 0) {
+          // 자동 조정 대상 필드들 찾기
+          var autoAdjustInputs = [];
+          for(var j = 0; j < scoreInputs.length; j++) {
+            if(!scoreInputs[j].classList.contains('manually-changed')) {
+              autoAdjustInputs.push(scoreInputs[j]);
+            }
+          }
+          
+          if(autoAdjustInputs.length === 0) {
             updateTotalScore();
             return;
           }
           
-          // 남은 점수 계산 및 분배
-          var remainingScore = 100 - changedValue;
+          // 남은 점수를 자동 조정 대상 필드들에 균등 분배
+          var remainingScore = 100 - manualTotal;
           if(remainingScore < 0) remainingScore = 0;
           
-          var baseScore = Math.floor(remainingScore / otherInputs.length);
-          var extraPoints = remainingScore % otherInputs.length;
+          var baseScore = remainingScore / autoAdjustInputs.length;
           
-          // 점수 할당
-          for(var j = 0; j < otherInputs.length; j++) {
+          // 점수 할당 (자동 조정 대상만)
+          for(var k = 0; k < autoAdjustInputs.length; k++) {
             var newScore = baseScore;
-            if(j < extraPoints) {
-              newScore += 1;
-            }
-            otherInputs[j].value = newScore;
+            autoAdjustInputs[k].value = newScore.toFixed(2);
             
             // 자동 조정된 필드 스타일 초기화
-            otherInputs[j].style.backgroundColor = '';
-            otherInputs[j].style.borderColor = '';
+            autoAdjustInputs[k].classList.remove('manually-changed');
           }
           
           updateTotalScore();
@@ -415,19 +450,14 @@
         var total = scoreInputs.length;
         if(total === 0) return;
         
-        var baseScore = Math.floor(100 / total);
-        var extraPoints = 100 % total;
+        var baseScore = 100 / total;
         
         for(var i = 0; i < scoreInputs.length; i++) {
           var score = baseScore;
-          if(i < extraPoints) {
-            score += 1;
-          }
-          scoreInputs[i].value = score;
+          scoreInputs[i].value = score.toFixed(2);
           
-          // 스타일 초기화
-          scoreInputs[i].style.backgroundColor = '';
-          scoreInputs[i].style.borderColor = '';
+          // 수동 변경 표시 제거 (모든 배점을 자동으로 재설정)
+          scoreInputs[i].classList.remove('manually-changed');
         }
         
         updateTotalScore();
