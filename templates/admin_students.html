@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>학생 관리</title>
+  <style>
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    th { background: #f5f5f5; }
+    .filter-form, .add-form { margin-bottom: 20px; }
+    .btn { padding: 6px 16px; border: none; border-radius: 4px; color: #fff; background: #007bff; text-decoration: none; margin: 0 2px; }
+    .btn-edit { background: #28a745; }
+    .btn-del { background: #dc3545; }
+    .btn:hover { opacity: 0.8; }
+    .search-form { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
+    .search-form input { padding: 6px; border: 1px solid #ccc; border-radius: 4px; width: 200px; }
+    .search-form button { padding: 6px 16px; }
+    tr.hidden { display: none; }
+    .highlight { background-color: #fff3cd; }
+    .select-group { display: flex; gap: 8px; }
+  </style>
+</head>
+<body>
+  <h2>학생 관리</h2>
+  
+  <div class="search-form">
+    <input type="text" id="searchInput" placeholder="아이디 또는 이름(실명)으로 검색..." oninput="searchStudents()">
+  </div>
+
+  <form class="filter-form" method="get">
+    <label>학년-반별 보기:
+      <span class="select-group">
+        <select name="grade_filter" id="gradeFilter" onchange="updateClassFilter(); this.form.submit();">
+          <option value="">학년 전체</option>
+          <option value="초등">초등</option>
+          <option value="중1">중1</option>
+          <option value="중2">중2</option>
+          <option value="중3">중3</option>
+          <option value="고1">고1</option>
+          <option value="고2">고2</option>
+          <option value="고3">고3</option>
+        </select>
+        <select name="class_filter" id="classFilter" onchange="this.form.submit();">
+          <option value="">반 전체</option>
+          <option value="A반">A반</option>
+          <option value="B반">B반</option>
+          <option value="C반">C반</option>
+          <option value="D반">D반</option>
+          <option value="E반">E반</option>
+        </select>
+      </span>
+    </label>
+  </form>
+
+  <form class="add-form" method="post">
+    <strong>학생 추가:</strong>
+    아이디: <input name="username" required>
+    이름(실명): <input name="nickname" required>
+    비밀번호: <input name="password" required>
+    <span class="select-group">
+      <select name="grade" id="addGradeSelect" required>
+        <option value="">학년 선택</option>
+        <option value="초등">초등</option>
+        <option value="중1">중1</option>
+        <option value="중2">중2</option>
+        <option value="중3">중3</option>
+        <option value="고1">고1</option>
+        <option value="고2">고2</option>
+        <option value="고3">고3</option>
+      </select>
+      <select name="class_name" id="addClassSelect" required>
+        <option value="">반 선택</option>
+        <option value="A반">A반</option>
+        <option value="B반">B반</option>
+        <option value="C반">C반</option>
+        <option value="D반">D반</option>
+        <option value="E반">E반</option>
+      </select>
+    </span>
+    <button type="submit" class="btn">추가</button>
+  </form>
+
+  <table>
+    <tr><th>ID</th><th>아이디</th><th>이름(실명)</th><th>학년-반</th><th>성적</th><th>수정</th><th>삭제</th></tr>
+    {% for s in students %}
+      <tr class="student-row">
+        <td>{{ s.id }}</td>
+        <td class="username">{{ s.username }}</td>
+        <td class="nickname">{{ s.nickname }}</td>
+        <td>{{ s.class_name }}</td>
+        <td><a href="/admin/students/{{ s.id }}/results" class="btn">성적 보기</a></td>
+        <td><a href="/admin/students/edit/{{ s.id }}" class="btn btn-edit">수정</a></td>
+        <td>
+          <form method="post" action="/admin/students/delete/{{ s.id }}" style="display:inline;" onsubmit="return confirm('정말 삭제하시겠습니까?');">
+            <button type="submit" class="btn btn-del">삭제</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+  <a href="/admin_dashboard" class="btn" style="margin-top:20px;display:inline-block;">대시보드로</a>
+
+  <script>
+    function searchStudents() {
+      const searchInput = document.getElementById('searchInput');
+      const searchTerm = searchInput.value.toLowerCase();
+      const rows = document.getElementsByClassName('student-row');
+      
+      for (let row of rows) {
+        const username = row.querySelector('.username').textContent.toLowerCase();
+        const nickname = row.querySelector('.nickname').textContent.toLowerCase();
+        
+        if (username.includes(searchTerm) || nickname.includes(searchTerm)) {
+          row.classList.remove('hidden');
+          // Highlight matching text
+          if (searchTerm) {
+            highlightMatch(row, searchTerm);
+          } else {
+            removeHighlight(row);
+          }
+        } else {
+          row.classList.add('hidden');
+        }
+      }
+    }
+
+    function highlightMatch(row, searchTerm) {
+      const cells = [row.querySelector('.username'), row.querySelector('.nickname')];
+      cells.forEach(cell => {
+        const text = cell.textContent;
+        const highlightedText = text.replace(
+          new RegExp(searchTerm, 'gi'),
+          match => `<span class="highlight">${match}</span>`
+        );
+        cell.innerHTML = highlightedText;
+      });
+    }
+
+    function removeHighlight(row) {
+      const cells = [row.querySelector('.username'), row.querySelector('.nickname')];
+      cells.forEach(cell => {
+        cell.innerHTML = cell.textContent;
+      });
+    }
+
+    // 반별 필터에서 학년 선택 시 반 선택 유지
+    function updateClassFilter() {
+      // 필요시 JS로 동적 반 필터링 구현 가능
+    }
+
+    document.querySelector('select[name="grade_filter"]').addEventListener('change', function() {
+      setTimeout(searchStudents, 100);
+    });
+    document.querySelector('select[name="class_filter"]').addEventListener('change', function() {
+      setTimeout(searchStudents, 100);
+    });
+  </script>
+</body>
+</html> 

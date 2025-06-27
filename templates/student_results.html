@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>학생 시험 결과</title>
+  <style>
+    table { border-collapse: collapse; width: 80%; margin: 30px auto; }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+    th { background: #f5f5f5; }
+    h2 { text-align: center; }
+    .btn { display: inline-block; padding: 8px 20px; background: #007bff; color: #fff; border-radius: 5px; text-decoration: none; margin: 20px auto; }
+    .btn:hover { background: #0056b3; }
+  </style>
+</head>
+<body>
+  <h2>{{ user.nickname }} ({{ user.username }}) 학생의 시험 결과</h2>
+  <table>
+    <tr><th>시험명</th><th>점수</th><th>응시일</th></tr>
+    {% for r in results %}
+      <tr>
+        <td>{{ exams[r.exam_id].title if r.exam_id in exams else r.exam_id }}</td>
+        <td>{{ r.score }}</td>
+        <td>{{ r.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+  <div style="text-align:center;">
+    <a href="/admin/students" class="btn">학생 목록으로</a>
+  </div>
+</body>
+</html> 

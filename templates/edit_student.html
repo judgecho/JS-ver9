@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>학생 정보 수정</title>
+  <style>
+    form { margin: 30px auto; max-width: 400px; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+    label { display: block; margin-bottom: 10px; }
+    input, select { width: 100%; padding: 8px; margin-bottom: 16px; border-radius: 4px; border: 1px solid #aaa; }
+    .btn { padding: 8px 20px; background: #28a745; color: #fff; border: none; border-radius: 5px; font-size: 1em; }
+    .btn:hover { background: #218838; }
+    .select-group { display: flex; gap: 8px; }
+  </style>
+</head>
+<body>
+  <h2>학생 정보 수정</h2>
+  <form method="post">
+    <label>아이디: <input name="username" value="{{ user.username }}" required></label>
+    <label>이름(실명): <input name="nickname" value="{{ user.nickname }}" required></label>
+    <label>비밀번호: <input name="password" value="{{ user.password }}" required></label>
+    <label>학년/반:
+      <span class="select-group">
+        <select name="grade" required>
+          <option value="">학년 선택</option>
+          <option value="초등" {% if grade == '초등' %}selected{% endif %}>초등</option>
+          <option value="중1" {% if grade == '중1' %}selected{% endif %}>중1</option>
+          <option value="중2" {% if grade == '중2' %}selected{% endif %}>중2</option>
+          <option value="중3" {% if grade == '중3' %}selected{% endif %}>중3</option>
+          <option value="고1" {% if grade == '고1' %}selected{% endif %}>고1</option>
+          <option value="고2" {% if grade == '고2' %}selected{% endif %}>고2</option>
+          <option value="고3" {% if grade == '고3' %}selected{% endif %}>고3</option>
+        </select>
+        <select name="class_name" required>
+          <option value="">반 선택</option>
+          <option value="A반" {% if class_part == 'A반' %}selected{% endif %}>A반</option>
+          <option value="B반" {% if class_part == 'B반' %}selected{% endif %}>B반</option>
+          <option value="C반" {% if class_part == 'C반' %}selected{% endif %}>C반</option>
+          <option value="D반" {% if class_part == 'D반' %}selected{% endif %}>D반</option>
+          <option value="E반" {% if class_part == 'E반' %}selected{% endif %}>E반</option>
+        </select>
+      </span>
+    </label>
+    <button type="submit" class="btn">저장</button>
+    <a href="/admin/students" class="btn" style="background:#007bff;margin-left:10px;">목록으로</a>
+  </form>
+</body>
+</html> 

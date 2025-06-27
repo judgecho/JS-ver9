@@ -1,11 +1,93 @@
-<form method="POST">
-  {% for q in questions %}
-    <p>문항 {{ loop.index }}:</p>
-    <label><input type="radio" name="{{ q.id }}" value="1"> {{ q.choice1 }}</label><br>
-    <label><input type="radio" name="{{ q.id }}" value="2"> {{ q.choice2 }}</label><br>
-    <label><input type="radio" name="{{ q.id }}" value="3"> {{ q.choice3 }}</label><br>
-    <label><input type="radio" name="{{ q.id }}" value="4"> {{ q.choice4 }}</label><br>
-    <label><input type="radio" name="{{ q.id }}" value="5"> {{ q.choice5 }}</label><br><br>
-  {% endfor %}
-  <button type="submit">제출</button>
-</form>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>시험 응시</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8f9fa; margin: 0; padding: 0; }
+    .exam-container { max-width: 500px; margin: 30px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 30px 20px; }
+    .question-block { margin-bottom: 32px; }
+    .question-title { font-size: 1.2em; margin-bottom: 18px; font-weight: bold; }
+    .choices { display: flex; justify-content: space-between; gap: 10px; }
+    .choice-label {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #e9ecef;
+      border-radius: 8px;
+      padding: 18px 0;
+      font-size: 1.1em;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: background 0.2s, border 0.2s;
+      user-select: none;
+    }
+    .choice-label input[type="radio"] {
+      display: none;
+    }
+    .choice-label.selected, .choice-label:hover {
+      background: #007bff;
+      color: #fff;
+      border: 2px solid #0056b3;
+    }
+    .submit-btn {
+      width: 100%;
+      padding: 16px 0;
+      background: linear-gradient(90deg, #007bff 60%, #28a745 100%);
+      color: #fff;
+      font-size: 1.2em;
+      border: none;
+      border-radius: 8px;
+      margin-top: 20px;
+      cursor: pointer;
+      font-weight: bold;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      transition: background 0.2s;
+    }
+    .submit-btn:hover {
+      background: linear-gradient(90deg, #0056b3 60%, #218838 100%);
+    }
+    @media (max-width: 600px) {
+      .exam-container { padding: 10px 2vw; }
+      .choices { gap: 4px; }
+      .choice-label { font-size: 1em; padding: 12px 0; }
+    }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('.choices').forEach(function(choiceGroup) {
+        choiceGroup.querySelectorAll('input[type="radio"]').forEach(function(radio) {
+          radio.addEventListener('change', function() {
+            choiceGroup.querySelectorAll('.choice-label').forEach(function(label) {
+              label.classList.remove('selected');
+            });
+            radio.parentElement.classList.add('selected');
+          });
+        });
+      });
+    });
+  </script>
+</head>
+<body>
+  <div class="exam-container">
+    <form method="POST">
+      {% for q in questions %}
+        <div class="question-block">
+          <div class="question-title">문항 {{ q.question_number or loop.index }}</div>
+          <div class="choices">
+            {% for i in range(1,6) %}
+              <label class="choice-label">
+                <input type="radio" name="{{ q.id }}" value="{{ i }}">
+                {{ i }}
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+      <button type="submit" class="submit-btn">제출</button>
+    </form>
+  </div>
+</body>
+</html>

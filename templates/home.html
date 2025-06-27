@@ -1,1 +1,44 @@
-<h2>홈 페이지 - 로그인 또는 회원가입 해주세요</h2>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>홈 페이지</title>
+  <style>
+    body { text-align: center; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; }
+    .logo {
+      margin-top: 40px;
+      margin-bottom: 20px;
+      width: 120px;
+      height: auto;
+    }
+    .btn {
+      display: inline-block;
+      padding: 12px 28px;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 6px;
+      margin: 10px 8px;
+      text-decoration: none;
+      color: #fff;
+      transition: background 0.2s;
+    }
+    .btn-login { background: #007bff; }
+    .btn-login:hover { background: #0056b3; }
+    .btn-register { background: #28a745; }
+    .btn-register:hover { background: #1e7e34; }
+    @media (max-width: 600px) {
+      .logo { width: 80px; }
+      .btn { width: 90%; font-size: 1em; padding: 14px 0; }
+    }
+  </style>
+</head>
+<body>
+  <img src="/static/logo.png" alt="로고" class="logo">
+  <h2>홈 페이지 - 로그인 또는 회원가입 해주세요</h2>
+  <div style="margin-top: 30px;">
+    <a href="/login" class="btn btn-login">로그인</a>
+    <a href="/register" class="btn btn-register">회원가입</a>
+  </div>
+</body>
+</html>

@@ -1,58 +1,105 @@
-# 시험 관리 시스템
+# Exam Management System
 
-Flask 기반의 웹 애플리케이션으로 시험을 관리하고 채점하는 시스템입니다.
+A Flask-based exam management system for teachers to create, administer, and grade exams with student management capabilities.
 
-## 기능
+## Features
 
-- 사용자 등록 및 로그인
-- 시험 업로드 및 관리
-- 시험 채점 및 결과 확인
-- 통계 및 분석 기능
-- 관리자 대시보드
+- **User Management**: Admin and student accounts with role-based access
+- **Exam Creation**: Create exams with multiple choice questions
+- **Student Management**: Add, edit, and manage students by class
+- **Grading System**: Automatic and manual grading with visual feedback
+- **Statistics**: Detailed exam and student performance analytics
+- **Responsive Design**: Mobile-friendly interface
 
-## 설치 방법
+## Setup Instructions
 
-1. 저장소를 클론합니다:
-```bash
-git clone <repository-url>
-cd <project-directory>
+### Prerequisites
+- Python 3.7 or higher
+- Git
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/[your-username]/[your-repo-name].git
+   cd [your-repo-name]
+   ```
+
+2. **Create virtual environment**
+   ```bash
+   python -m venv venv
+   
+   # Windows
+   venv\Scripts\activate
+   
+   # macOS/Linux
+   source venv/bin/activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Run the application**
+   ```bash
+   python app.py
+   ```
+
+5. **Access the application**
+   - Open your browser and go to `http://localhost:5001`
+   - Create an admin account on first run
+
+### Database Setup
+
+The application uses SQLite database which is automatically created in the `instance/` folder on first run.
+
+**To migrate existing data to a new computer:**
+1. Copy the `instance/database.db` file from the old computer
+2. Paste it into the `instance/` folder on the new computer
+
+### Environment Variables (Optional)
+
+Create a `.env` file in the root directory for custom configurations:
+```
+FLASK_ENV=development
+SECRET_KEY=your-secret-key
+DATABASE_URI=sqlite:///path/to/your/database.db
 ```
 
-2. 가상환경을 생성하고 활성화합니다:
-```bash
-python -m venv venv
-# Windows
-venv\Scripts\activate
-# macOS/Linux
-source venv/bin/activate
-```
+## Usage
 
-3. 의존성을 설치합니다:
-```bash
-pip install -r requirements.txt
-```
+### Admin Features
+- Create and manage exams
+- Add/edit/delete students
+- Assign students to classes
+- View exam statistics
+- Grade exams
 
-4. 애플리케이션을 실행합니다:
-```bash
-python app.py
-```
+### Student Features
+- Take exams
+- View results and statistics
+- Access personal performance data
 
-5. 웹 브라우저에서 `http://localhost:5000`으로 접속합니다.
-
-## 프로젝트 구조
+## Project Structure
 
 ```
-├── app.py              # 메인 애플리케이션 파일
-├── models.py           # 데이터베이스 모델
-├── requirements.txt    # Python 의존성
-├── static/            # 정적 파일 (CSS, JS)
-├── templates/         # HTML 템플릿
-└── instance/          # 데이터베이스 파일
+├── app.py                 # Main Flask application
+├── models.py             # Database models
+├── requirements.txt      # Python dependencies
+├── static/              # Static files (CSS, images)
+├── templates/           # HTML templates
+└── instance/           # Database and instance files
 ```
 
-## 사용 기술
+## Contributing
 
-- **Backend**: Flask, SQLAlchemy
-- **Frontend**: HTML, CSS, JavaScript
-- **Database**: SQLite
-- **File Processing**: openpyxl, pandas 
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Commit and push to the branch
+5. Create a Pull Request
+
+## License
+
+This project is licensed under the MIT License. 

@@ -1,12 +1,22 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Admin Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      .top-menu { margin-bottom: 20px; }
+      .top-menu a { display: inline-block; margin-right: 12px; padding: 8px 18px; background: #007bff; color: #fff; border-radius: 5px; text-decoration: none; font-weight: bold; }
+      .top-menu a:hover { background: #0056b3; }
+    </style>
 </head>
 <body>
+    <div class="top-menu">
+      <a href="/admin/students">학생 관리</a>
+      <a href="/admin/class_stats">반별 통계</a>
+      <a href="/create_exam" style="background:#28a745;">시험 생성</a>
+      <a href="/upload_exam" style="background:#ffc107; color:#222;">시험 업로드</a>
+    </div>
     <h2>시험별 통계</h2>
     <canvas id="examChart" width="600" height="300"></canvas>
     <script>

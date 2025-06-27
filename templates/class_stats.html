@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>반별 통계</title>
+  <style>
+    table { border-collapse: collapse; width: 80%; margin: 30px auto; }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+    th { background: #f5f5f5; }
+    h2 { text-align: center; }
+    .btn { display: inline-block; padding: 8px 20px; background: #007bff; color: #fff; border-radius: 5px; text-decoration: none; margin: 20px auto; }
+    .btn:hover { background: #0056b3; }
+  </style>
+</head>
+<body>
+  <h2>반별 통계</h2>
+  <table>
+    <tr><th>반</th><th>학생 수</th><th>평균 점수</th><th>최고 점수</th></tr>
+    {% for c in class_data %}
+      <tr>
+        <td>{{ c.class_name }}</td>
+        <td>{{ c.student_count }}</td>
+        <td>{{ c.avg_score }}</td>
+        <td>{{ c.max_score }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+  <div style="text-align:center;">
+    <a href="/admin_dashboard" class="btn">대시보드로</a>
+  </div>
+</body>
+</html> 

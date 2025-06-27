@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>시험 생성</title>
+  <style>
+    form { max-width: 400px; margin: 40px auto; padding: 24px; border: 1px solid #ccc; border-radius: 10px; background: #fff; }
+    label { display: block; margin-bottom: 12px; font-weight: bold; }
+    input, select { width: 100%; padding: 8px; margin-bottom: 18px; border-radius: 5px; border: 1px solid #aaa; }
+    button { width: 100%; padding: 12px; background: #28a745; color: #fff; border: none; border-radius: 6px; font-size: 1.1em; font-weight: bold; cursor: pointer; }
+    button:hover { background: #218838; }
+    .info { text-align: center; margin-top: 18px; color: #555; }
+    .category-group { margin-bottom: 15px; }
+    .subcategory { margin-left: 20px; margin-top: 10px; display: none; }
+    .subcategory.active { display: block; }
+  </style>
+</head>
+<body>
+  <form method="post">
+    <h2>시험 생성</h2>
+    <label>시험 제목
+      <input name="title" required>
+    </label>
+    
+    <div class="category-group">
+      <label>시험 종류
+        <select name="main_category" id="mainCategory">
+          <option value="">선택하세요</option>
+          <option value="모의고사">모의고사</option>
+          <option value="듣기시험">듣기시험</option>
+          <option value="중간고사">중간고사</option>
+          <option value="기말고사">기말고사</option>
+          <option value="기타">기타</option>
+        </select>
+      </label>
+
+      <div id="mockExamSubcategory" class="subcategory">
+        <label>학년
+          <select name="grade" id="gradeSelect">
+            <option value="">선택하세요</option>
+            <option value="중1">중1</option>
+            <option value="중2">중2</option>
+            <option value="중3">중3</option>
+            <option value="고1">고1</option>
+            <option value="고2">고2</option>
+            <option value="고3">고3</option>
+          </select>
+        </label>
+
+        <label>연도
+          <select name="year" id="yearSelect">
+            <option value="">선택하세요</option>
+            <option value="2024">2024년</option>
+            <option value="2023">2023년</option>
+            <option value="2022">2022년</option>
+            <option value="2021">2021년</option>
+            <option value="2020">2020년</option>
+            <option value="2019">2019년</option>
+            <option value="2018">2018년</option>
+            <option value="2017">2017년</option>
+            <option value="2016">2016년</option>
+            <option value="2015">2015년</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="listeningTestSubcategory" class="subcategory">
+        <label>학년
+          <select name="listening_grade" id="listeningGradeSelect">
+            <option value="">선택하세요</option>
+            <option value="중1">중1</option>
+            <option value="중2">중2</option>
+            <option value="중3">중3</option>
+            <option value="고1">고1</option>
+            <option value="고2">고2</option>
+            <option value="고3">고3</option>
+          </select>
+        </label>
+
+        <label>회차
+          <select name="listening_round" id="listeningRoundSelect">
+            <option value="">선택하세요</option>
+            <option value="1">1회</option>
+            <option value="2">2회</option>
+            <option value="3">3회</option>
+            <option value="4">4회</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <label>문항 수
+      <input name="question_count" type="number" min="1" max="100" required>
+    </label>
+
+    <input type="hidden" name="category" id="finalCategory">
+    <button type="submit">시험 생성</button>
+    <div class="info">시험 생성 후 문제를 추가/편집할 수 있습니다.</div>
+  </form>
+
+  <script>
+    document.getElementById('mainCategory').addEventListener('change', function() {
+      // Hide all subcategories first
+      document.querySelectorAll('.subcategory').forEach(el => el.classList.remove('active'));
+      
+      // Show relevant subcategory based on selection
+      if (this.value === '모의고사') {
+        document.getElementById('mockExamSubcategory').classList.add('active');
+      } else if (this.value === '듣기시험') {
+        document.getElementById('listeningTestSubcategory').classList.add('active');
+      }
+    });
+
+    // Update final category before form submission
+    document.querySelector('form').addEventListener('submit', function(e) {
+      const mainCategory = document.getElementById('mainCategory').value;
+      let finalCategory = mainCategory;
+
+      if (mainCategory === '모의고사') {
+        const grade = document.getElementById('gradeSelect').value;
+        const year = document.getElementById('yearSelect').value;
+        if (grade && year) {
+          finalCategory = `모의고사_${grade}_${year}`;
+        }
+      } else if (mainCategory === '듣기시험') {
+        const grade = document.getElementById('listeningGradeSelect').value;
+        const round = document.getElementById('listeningRoundSelect').value;
+        if (grade && round) {
+          finalCategory = `듣기시험_${grade}_${round}회`;
+        }
+      }
+
+      document.getElementById('finalCategory').value = finalCategory;
+    });
+  </script>
+</body>
+</html>
