@@ -18,14 +18,24 @@
             background-color: #f2f2f2;
         }
         .number-input {
-            width: 40px;
+            width: 30px;
             text-align: center;
-            font-size: 12px;
-            padding: 4px;
+            font-size: 11px;
+            padding: 3px;
         }
         .score-input {
-            width: 80px;
+            width: 50px;
             text-align: center;
+            font-size: 11px;
+            padding: 3px;
+        }
+        .answer-input {
+            width: 40px;
+            text-align: center;
+            font-size: 11px;
+            padding: 3px;
+            border: 1px solid #ced4da;
+            border-radius: 3px;
         }
         .choice-input {
             width: 200px;
@@ -165,7 +175,7 @@
         }
         .answer-choices {
             display: flex;
-            gap: 6px;
+            gap: 8px;
             margin-bottom: 8px;
             justify-content: center;
             align-items: center;
@@ -177,14 +187,18 @@
             cursor: pointer;
             border: 2px solid #dee2e6;
             border-radius: 50%;
-            width: 35px;
-            height: 35px;
+            width: 45px;
+            height: 45px;
             background: #fff;
             transition: all 0.3s ease;
             position: relative;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 16px;
             color: #495057;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         }
         .choice-btn:hover {
             border: 2.5px solid #007bff;
@@ -207,9 +221,9 @@
             background: #28a745;
             color: white;
             border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            font-size: 10px;
+            width: 18px;
+            height: 18px;
+            font-size: 11px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -227,6 +241,9 @@
         }
         .choice-btn.selected {
             animation: pulse 2s infinite;
+        }
+        .choice-btn:active {
+            transform: scale(0.95);
         }
         .choice-btn:nth-child(1) { border-color: #e74c3c; }
         .choice-btn:nth-child(1):hover { border-color: #c0392b; background: linear-gradient(135deg, #ffebee, #ffcdd2); }
@@ -345,13 +362,16 @@
                           </div>
                         </td>
                         <td style="text-align: center;">
-                            <span id="selected_answer_{{q.id}}">
-                                {% if q.answer %}
-                                    {{ q.answer }}
-                                {% else %}
-                                    미선택
-                                {% endif %}
-                            </span>
+                            <input type="text" name="answer_{{ q.id }}" value="{{ q.answer or '' }}" 
+                                   class="answer-input" placeholder="정답"
+                                   title="정답을 직접 입력하거나 아래 보기를 클릭하세요">
+                            <div class="choices-edit answer-choices" data-qid="{{q.id}}">
+                                {% for i in range(1, 6) %}
+                                <label class="choice-btn {% if q.answer == i|string %}selected{% endif %}" data-choice="{{i}}">
+                                    {{i}}
+                                </label>
+                                {% endfor %}
+                            </div>
                         </td>
                         <td style="text-align: center;">
                             <input type="number" name="score_{{ q.id }}" value="{{ q.score or 0 }}" 
@@ -468,7 +488,7 @@
                     input.style.backgroundColor = '#e8f4fd';
                     input.style.borderColor = '#007bff';
                     
-                    // 툴크 추가
+                    // 툴팁 추가
                     input.title = `자동 조정 예상 배점: ${avgScore}점`;
                 } else {
                     // 수동 배점 스타일
@@ -614,12 +634,20 @@
             document.querySelectorAll('.answer-choices').forEach(function(group) {
                 group.querySelectorAll('.choice-btn').forEach(function(btn) {
                     btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const qid = group.getAttribute('data-qid');
+                        const choice = this.getAttribute('data-choice');
+                        
                         // 모든 선택 해제
                         group.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('selected'));
                         // 선택 표시
-                        btn.classList.add('selected');
-                        // 실제 라디오 버튼 체크
-                        btn.querySelector('input[type="radio"]').checked = true;
+                        this.classList.add('selected');
+                        
+                        // 정답 입력 필드에 값 설정
+                        const answerInput = document.querySelector(`input[name="answer_${qid}"]`);
+                        if (answerInput) {
+                            answerInput.value = choice;
+                        }
                     });
                 });
             });
