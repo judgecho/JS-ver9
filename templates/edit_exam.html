@@ -71,6 +71,16 @@
                 <input type="text" name="category" value="{{ exam.category if exam.category else '' }}">
             </div>
             
+            <!-- 배점 정보 표시 영역 -->
+            <div style="margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid #007bff;">
+                <div id="total-score-display" style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">
+                    총점: {{ "%.1f"|format(questions|sum(attribute='score')) }}점
+                </div>
+                <div id="score-info" style="font-size: 14px; color: #666;">
+                    💡 배점을 수동으로 변경하면 나머지 문항들의 배점이 자동으로 조정되어 총점이 100점이 됩니다.
+                </div>
+            </div>
+            
             <div class="action-buttons">
                 <button type="submit" name="change_numbers" class="change-numbers-btn">번호 변경 적용</button>
                 <button type="submit">저장</button>
@@ -158,6 +168,72 @@
                 const answer = this.value;
                 document.getElementById(`selected_answer_${qid}`).textContent = answer;
             });
+        });
+        
+        // 배점 변경 시 총점 계산 및 안내
+        function updateTotalScore() {
+            const scoreInputs = document.querySelectorAll('input[name^="score_"]');
+            let totalScore = 0;
+            let manualScores = 0;
+            
+            scoreInputs.forEach(input => {
+                const score = parseFloat(input.value) || 0;
+                totalScore += score;
+                if (score > 0) {
+                    manualScores++;
+                }
+            });
+            
+            // 총점 표시 업데이트
+            const totalDisplay = document.getElementById('total-score-display');
+            if (totalDisplay) {
+                totalDisplay.textContent = `총점: ${totalScore.toFixed(1)}점`;
+                
+                if (totalScore > 100) {
+                    totalDisplay.style.color = 'red';
+                    totalDisplay.textContent += ' (100점 초과)';
+                } else if (totalScore === 100) {
+                    totalDisplay.style.color = 'green';
+                    totalDisplay.textContent += ' (완벽!)';
+                } else {
+                    totalDisplay.style.color = 'orange';
+                    totalDisplay.textContent += ` (${(100 - totalScore).toFixed(1)}점 부족)`;
+                }
+            }
+            
+            // 안내 메시지 업데이트
+            const infoDisplay = document.getElementById('score-info');
+            if (infoDisplay) {
+                if (totalScore > 100) {
+                    infoDisplay.textContent = '⚠️ 수동 배점이 100점을 초과합니다. 저장 시 나머지 문항들의 배점이 0점으로 설정됩니다.';
+                    infoDisplay.style.color = 'red';
+                } else if (totalScore === 100) {
+                    infoDisplay.textContent = '✅ 배점이 완벽하게 100점으로 설정되었습니다.';
+                    infoDisplay.style.color = 'green';
+                } else {
+                    const remaining = 100 - totalScore;
+                    const remainingQuestions = scoreInputs.length - manualScores;
+                    if (remainingQuestions > 0) {
+                        const avgScore = (remaining / remainingQuestions).toFixed(1);
+                        infoDisplay.textContent = `💡 저장 시 나머지 ${remainingQuestions}개 문항의 배점이 각각 ${avgScore}점으로 자동 조정됩니다.`;
+                        infoDisplay.style.color = 'blue';
+                    } else {
+                        infoDisplay.textContent = `⚠️ 배점이 ${totalScore.toFixed(1)}점으로 설정되어 있습니다.`;
+                        infoDisplay.style.color = 'orange';
+                    }
+                }
+            }
+        }
+        
+        // 배점 입력 필드에 이벤트 리스너 추가
+        document.addEventListener('DOMContentLoaded', function() {
+            const scoreInputs = document.querySelectorAll('input[name^="score_"]');
+            scoreInputs.forEach(input => {
+                input.addEventListener('input', updateTotalScore);
+            });
+            
+            // 초기 총점 계산
+            updateTotalScore();
         });
     </script>
 </body>

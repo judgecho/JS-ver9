@@ -290,6 +290,9 @@ def edit_exam(exam_id):
                 print("배점 재계산 완료")
         
         # 문항 내용 및 배점 업데이트
+        manual_scores = {}  # 수동으로 변경된 배점들을 저장
+        total_manual_score = 0  # 수동 배점의 총합
+        
         for q in questions:
             q_id = str(q.id)
             q.choice1 = request.form.get(f'choice1_{q_id}', '')
@@ -302,15 +305,59 @@ def edit_exam(exam_id):
             # 개별 배점 수정
             score = request.form.get(f'score_{q_id}', '0')
             try:
-                q.score = float(score)
+                new_score = float(score)
+                if new_score != q.score:  # 배점이 변경된 경우
+                    manual_scores[q.id] = new_score
+                    total_manual_score += new_score
+                q.score = new_score
             except ValueError:
                 q.score = 0
+        
+        # 수동 배점이 있는 경우 나머지 문항들의 배점 자동 조정
+        if manual_scores:
+            print(f"수동 배점 변경 감지: {manual_scores}")
+            print(f"수동 배점 총합: {total_manual_score}")
+            
+            # 수동 배점이 100점을 초과하는 경우 경고
+            if total_manual_score > 100:
+                flash(f'수동 배점 총합({total_manual_score}점)이 100점을 초과합니다. 나머지 문항들의 배점이 0점으로 설정됩니다.', 'warning')
+                # 나머지 문항들의 배점을 0으로 설정
+                for q in questions:
+                    if q.id not in manual_scores:
+                        q.score = 0
+            else:
+                # 나머지 문항들의 배점을 균등 분배
+                remaining_score = 100 - total_manual_score
+                remaining_questions = [q for q in questions if q.id not in manual_scores]
+                
+                if remaining_questions:
+                    score_per_remaining = round(remaining_score / len(remaining_questions), 1)
+                    print(f"나머지 문항 {len(remaining_questions)}개, 문항당 {score_per_remaining}점")
+                    
+                    for q in remaining_questions:
+                        q.score = score_per_remaining
+                    
+                    # 소수점 오차 보정 (마지막 문항에 남은 점수 할당)
+                    actual_total = sum(q.score for q in questions)
+                    if actual_total != 100:
+                        correction = 100 - actual_total
+                        if remaining_questions:
+                            remaining_questions[-1].score += correction
+                            print(f"배점 보정: {correction}점 추가")
+                else:
+                    # 모든 문항이 수동 배점인 경우
+                    flash('모든 문항의 배점이 수동으로 설정되었습니다.', 'info')
         
         # 시험 정보 업데이트
         exam.title = request.form.get('title', exam.title or '')
         exam.category = request.form.get('category', exam.category if hasattr(exam, 'category') else '')
         
         db.session.commit()
+        
+        # 배점 조정 결과 출력
+        total_score = sum(q.score for q in questions)
+        print(f"최종 배점 조정 완료: 총점 {total_score}점")
+        
         flash('시험이 성공적으로 업데이트되었습니다.', 'success')
         return redirect(url_for('edit_exam', exam_id=exam_id))
     
