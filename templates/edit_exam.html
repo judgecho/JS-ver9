@@ -466,7 +466,7 @@
                 const expectedTotal = questionCount * defaultScore;
                 
                 if (totalScore > expectedTotal) {
-                    infoDisplay.textContent = `⚠️ 수동 배점이 ${expectedTotal.toFixed(1)}점을 초과합니다. 저장 시 나머지 문항들의 배점이 0점으로 설정됩니다.`;
+                    infoDisplay.textContent = `⚠️ 현재 총점: ${totalScore.toFixed(1)}점`;
                     infoDisplay.style.color = 'red';
                 } else if (Math.abs(totalScore - expectedTotal) < 0.1) {
                     infoDisplay.textContent = '✅ 배점이 완벽하게 설정되었습니다.';
@@ -476,13 +476,13 @@
                     const remainingQuestions = scoreInputs.length - manualCount;
                     if (remainingQuestions > 0) {
                         const avgScore = (remaining / remainingQuestions).toFixed(1);
-                        infoDisplay.textContent = `💡 저장 시 나머지 ${remainingQuestions}개 문항의 배점이 각각 ${avgScore}점으로 자동 조정됩니다.`;
+                        infoDisplay.textContent = `💡 나머지 ${remainingQuestions}개 문항의 배점이 각각 ${avgScore}점으로 자동 조정됩니다.`;
                         infoDisplay.style.color = 'blue';
                         
                         // 실시간으로 나머지 문항들의 배점 미리보기 표시
                         showPreviewScores(manualScores, avgScore);
                     } else {
-                        infoDisplay.textContent = `⚠️ 배점이 ${totalScore.toFixed(1)}점으로 설정되어 있습니다.`;
+                        infoDisplay.textContent = `⚠️ 현재 총점: ${totalScore.toFixed(1)}점`;
                         infoDisplay.style.color = 'orange';
                     }
                 }
