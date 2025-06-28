@@ -281,13 +281,8 @@ def edit_exam(exam_id):
                 db.session.commit()
                 print("데이터베이스 커밋 완료")
                 
-                # 배점 재계산
-                questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
-                score_per_question = 100 / len(questions)
-                for q in questions:
-                    q.score = round(score_per_question, 1)
-                db.session.commit()
-                print("배점 재계산 완료")
+                # 번호 변경 후 배점은 그대로 유지 (자동 재계산하지 않음)
+                print("번호 변경 완료 - 배점은 그대로 유지")
         
         # 수동 배점 변경 감지 및 자동 조정
         manual_scores = {}
