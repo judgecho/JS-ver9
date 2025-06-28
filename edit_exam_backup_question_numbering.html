@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>시험 편집 - {{ exam.title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        .question-form {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .question-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .question-table th,
+        .question-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        .question-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        
+        .question-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .question-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .number-input {
+            width: 60px;
+            text-align: center;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 4px;
+        }
+        
+        .question-text {
+            width: 300px;
+            min-height: 60px;
+            resize: vertical;
+        }
+        
+        .option-input {
+            width: 200px;
+            margin-bottom: 5px;
+        }
+        
+        .points-input {
+            width: 80px;
+            text-align: center;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 2px;
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-warning {
+            background: #ffc107;
+            color: black;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn:hover {
+            opacity: 0.8;
+        }
+        
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .success-feedback {
+            background-color: #d4edda !important;
+            border-color: #28a745 !important;
+            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25) !important;
+            transition: all 0.3s ease;
+        }
+        
+        .option-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .option-row input[type="radio"] {
+            margin-right: 10px;
+        }
+        
+        .add-option-btn {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+        
+        .remove-option-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 2px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        
+        .exam-info {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .exam-info h3 {
+            margin: 0 0 10px 0;
+            color: #495057;
+        }
+        
+        .exam-info p {
+            margin: 5px 0;
+            color: #6c757d;
+        }
+        
+        .total-points {
+            font-weight: bold;
+            color: #28a745;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            color: #dc3545;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .success-message {
+            color: #155724;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>시험 편집: {{ exam.title }}</h1>
+        
+        <div class="exam-info">
+            <h3>시험 정보</h3>
+            <p><strong>제목:</strong> {{ exam.title }}</p>
+            <p><strong>설명:</strong> {{ exam.description or '설명 없음' }}</p>
+            <p><strong>총점:</strong> <span class="total-points">{{ exam.total_points }}점</span></p>
+            <p><strong>문항 수:</strong> {{ questions|length }}개</p>
+        </div>
+        
+        <div class="actions">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">대시보드로 돌아가기</a>
+            <a href="{{ url_for('copy_exam', exam_id=exam.id) }}" class="btn btn-warning">시험 복사</a>
+            <a href="{{ url_for('question_statistics', exam_id=exam.id) }}" class="btn btn-primary">문항 통계</a>
+            <a href="{{ url_for('analyze_results', exam_id=exam.id) }}" class="btn btn-success">결과 분석</a>
+        </div>
+        
+        <div id="messages"></div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>처리 중...</p>
+        </div>
+        
+        <form method="POST" action="{{ url_for('edit_exam', exam_id=exam.id) }}" id="examForm">
+            <table class="question-table">
+                <thead>
+                    <tr>
+                        <th>번호</th>
+                        <th>문제</th>
+                        <th>유형</th>
+                        <th>배점</th>
+                        <th>옵션</th>
+                        <th>작업</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for question in questions %}
+                    <tr data-question-id="{{ question.id }}">
+                        <td>
+                            <input type="number" 
+                                   name="number_{{ loop.index }}" 
+                                   value="{{ question.question_number }}" 
+                                   min="1" 
+                                   class="number-input"
+                                   data-qid="{{ question.id }}"
+                                   data-exam-id="{{ exam.id }}">
+                        </td>
+                        <td>
+                            <textarea name="question_{{ question.id }}" 
+                                      class="question-text" 
+                                      required>{{ question.question_text }}</textarea>
+                        </td>
+                        <td>
+                            <select name="type_{{ question.id }}" class="question-type" data-question-id="{{ question.id }}">
+                                <option value="multiple_choice" {% if question.question_type == 'multiple_choice' %}selected{% endif %}>객관식</option>
+                                <option value="essay" {% if question.question_type == 'essay' %}selected{% endif %}>주관식</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="number" 
+                                   name="points_{{ question.id }}" 
+                                   value="{{ question.points }}" 
+                                   min="0" 
+                                   step="0.5" 
+                                   class="points-input" 
+                                   required>
+                        </td>
+                        <td class="options-cell">
+                            {% if question.question_type == 'multiple_choice' %}
+                                <div class="options-container" data-question-id="{{ question.id }}">
+                                    {% for option in question.options %}
+                                    <div class="option-row">
+                                        <input type="radio" 
+                                               name="correct_{{ question.id }}" 
+                                               value="{{ option.id }}" 
+                                               {% if option.is_correct %}checked{% endif %}>
+                                        <input type="text" 
+                                               name="option_{{ option.id }}" 
+                                               value="{{ option.option_text }}" 
+                                               class="option-input" 
+                                               required>
+                                        <button type="button" 
+                                                class="remove-option-btn" 
+                                                onclick="removeOption(this)">삭제</button>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <button type="button" 
+                                        class="add-option-btn" 
+                                        onclick="addOption({{ question.id }})">옵션 추가</button>
+                            {% else %}
+                                <span>주관식</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button type="button" 
+                                    class="btn btn-danger" 
+                                    onclick="deleteQuestion({{ question.id }})">삭제</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <div class="actions">
+                <button type="submit" class="btn btn-primary">변경사항 저장</button>
+                <button type="button" class="btn btn-success" onclick="addQuestion()">새 문항 추가</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // 번호 변경 이벤트 설정
+        function setupNumberChangeEvents() {
+            // 기존 번호 변경 이벤트 (AJAX)
+            document.querySelectorAll('.number-input').forEach(input => {
+                input.addEventListener('change', function() {
+                    const qid = this.dataset.qid;
+                    const examId = this.dataset.examId;
+                    const newNumber = parseInt(this.value);
+                    
+                    if (isNaN(newNumber) || newNumber < 1) {
+                        alert('1 이상의 숫자를 입력하세요.');
+                        this.value = this.defaultValue;
+                        return;
+                    }
+                    
+                    // AJAX로 번호 변경 요청
+                    fetch('/api/update_question_number', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            qid: qid,
+                            new_number: newNumber,
+                            exam_id: examId
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('AJAX 응답:', data);
+                        
+                        if (data.success) {
+                            // 성공 메시지 표시
+                            showMessage(data.message, 'success');
+                            
+                            // 서버에서 받은 번호 정보로 화면 업데이트
+                            if (data.updated_numbers) {
+                                console.log('업데이트된 번호들:', data.updated_numbers);
+                                updateQuestionNumbers(data.updated_numbers);
+                            }
+                        } else {
+                            showMessage(data.error || '번호 변경에 실패했습니다.', 'error');
+                            // 원래 값으로 되돌리기
+                            this.value = this.defaultValue;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('AJAX 오류:', error);
+                        showMessage('번호 변경 중 오류가 발생했습니다.', 'error');
+                        // 원래 값으로 되돌리기
+                        this.value = this.defaultValue;
+                    });
+                });
+            });
+        }
+        
+        // 서버에서 받은 번호 정보로 화면 업데이트
+        function updateQuestionNumbers(updatedNumbers) {
+            console.log('화면 번호 업데이트 시작:', updatedNumbers);
+            
+            updatedNumbers.forEach(item => {
+                const numberInput = document.querySelector(`.number-input[data-qid="${item.qid}"]`);
+                if (numberInput) {
+                    const oldValue = numberInput.value;
+                    numberInput.value = item.new_number;
+                    numberInput.defaultValue = item.new_number;
+                    console.log(`문항 ${item.qid} 번호 업데이트: ${oldValue} -> ${item.new_number}`);
+                    
+                    // 시각적 피드백 추가
+                    numberInput.classList.add('success-feedback');
+                    setTimeout(() => {
+                        numberInput.classList.remove('success-feedback');
+                    }, 2000);
+                }
+            });
+            
+            console.log('화면 번호 업데이트 완료');
+        }
+        
+        // 메시지 표시 함수
+        function showMessage(message, type) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type === 'success' ? 'success-message' : 'error-message';
+            messageDiv.textContent = message;
+            
+            messagesDiv.appendChild(messageDiv);
+            
+            // 5초 후 메시지 제거
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+        
+        // 행 이벤트 설정
+        function setupRowEvents(row) {
+            // 번호 변경 이벤트 (AJAX)
+            const numberInput = row.querySelector('.number-input');
+            if (numberInput) {
+                numberInput.addEventListener('change', function() {
+                    const qid = this.dataset.qid;
+                    const examId = this.dataset.examId;
+                    const newNumber = parseInt(this.value);
+                    
+                    if (isNaN(newNumber) || newNumber < 1) {
+                        alert('1 이상의 숫자를 입력하세요.');
+                        this.value = this.defaultValue;
+                        return;
+                    }
+                    
+                    // AJAX로 번호 변경 요청
+                    fetch('/api/update_question_number', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            qid: qid,
+                            new_number: newNumber,
+                            exam_id: examId
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('AJAX 응답:', data);
+                        
+                        if (data.success) {
+                            // 성공 메시지 표시
+                            showMessage(data.message, 'success');
+                            
+                            // 서버에서 받은 번호 정보로 화면 업데이트
+                            if (data.updated_numbers) {
+                                console.log('업데이트된 번호들:', data.updated_numbers);
+                                updateQuestionNumbers(data.updated_numbers);
+                            }
+                        } else {
+                            showMessage(data.error || '번호 변경에 실패했습니다.', 'error');
+                            // 원래 값으로 되돌리기
+                            this.value = this.defaultValue;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('AJAX 오류:', error);
+                        showMessage('번호 변경 중 오류가 발생했습니다.', 'error');
+                        // 원래 값으로 되돌리기
+                        this.value = this.defaultValue;
+                    });
+                });
+            }
+            
+            // 질문 유형 변경 이벤트
+            const typeSelect = row.querySelector('.question-type');
+            if (typeSelect) {
+                typeSelect.addEventListener('change', function() {
+                    const questionId = this.dataset.questionId;
+                    const optionsCell = row.querySelector('.options-cell');
+                    
+                    if (this.value === 'multiple_choice') {
+                        optionsCell.innerHTML = `
+                            <div class="options-container" data-question-id="${questionId}">
+                                <div class="option-row">
+                                    <input type="radio" name="correct_${questionId}" value="new_1" checked>
+                                    <input type="text" name="option_new_1" class="option-input" required>
+                                    <button type="button" class="remove-option-btn" onclick="removeOption(this)">삭제</button>
+                                </div>
+                                <div class="option-row">
+                                    <input type="radio" name="correct_${questionId}" value="new_2">
+                                    <input type="text" name="option_new_2" class="option-input" required>
+                                    <button type="button" class="remove-option-btn" onclick="removeOption(this)">삭제</button>
+                                </div>
+                                <div class="option-row">
+                                    <input type="radio" name="correct_${questionId}" value="new_3">
+                                    <input type="text" name="option_new_3" class="option-input" required>
+                                    <button type="button" class="remove-option-btn" onclick="removeOption(this)">삭제</button>
+                                </div>
+                                <div class="option-row">
+                                    <input type="radio" name="correct_${questionId}" value="new_4">
+                                    <input type="text" name="option_new_4" class="option-input" required>
+                                    <button type="button" class="remove-option-btn" onclick="removeOption(this)">삭제</button>
+                                </div>
+                            </div>
+                            <button type="button" class="add-option-btn" onclick="addOption(${questionId})">옵션 추가</button>
+                        `;
+                    } else {
+                        optionsCell.innerHTML = '<span>주관식</span>';
+                    }
+                });
+            }
+        }
+        
+        // 옵션 추가
+        function addOption(questionId) {
+            const container = document.querySelector(`.options-container[data-question-id="${questionId}"]`);
+            const optionCount = container.children.length + 1;
+            
+            const optionRow = document.createElement('div');
+            optionRow.className = 'option-row';
+            optionRow.innerHTML = `
+                <input type="radio" name="correct_${questionId}" value="new_${optionCount}">
+                <input type="text" name="option_new_${optionCount}" class="option-input" required>
+                <button type="button" class="remove-option-btn" onclick="removeOption(this)">삭제</button>
+            `;
+            
+            container.appendChild(optionRow);
+        }
+        
+        // 옵션 삭제
+        function removeOption(button) {
+            const optionRow = button.parentElement;
+            const container = optionRow.parentElement;
+            
+            if (container.children.length > 1) {
+                optionRow.remove();
+            } else {
+                alert('최소 1개의 옵션이 필요합니다.');
+            }
+        }
+        
+        // 문항 삭제
+        function deleteQuestion(questionId) {
+            if (confirm('이 문항을 삭제하시겠습니까?')) {
+                // AJAX로 문항 삭제 요청
+                fetch(`/api/delete_question/${questionId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const row = document.querySelector(`tr[data-question-id="${questionId}"]`);
+                        row.remove();
+                        showMessage('문항이 삭제되었습니다.', 'success');
+                    } else {
+                        showMessage(data.error || '문항 삭제에 실패했습니다.', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('삭제 오류:', error);
+                    showMessage('문항 삭제 중 오류가 발생했습니다.', 'error');
+                });
+            }
+        }
+        
+        // 새 문항 추가
+        function addQuestion() {
+            const tbody = document.querySelector('.question-table tbody');
+            const newRow = document.createElement('tr');
+            const questionCount = tbody.children.length + 1;
+            
+            newRow.innerHTML = `
+                <td>
+                    <input type="number" name="number_new" value="${questionCount}" min="1" class="number-input">
+                </td>
+                <td>
+                    <textarea name="question_new" class="question-text" required></textarea>
+                </td>
+                <td>
+                    <select name="type_new" class="question-type" data-question-id="new">
+                        <option value="multiple_choice">객관식</option>
+                        <option value="essay">주관식</option>
+                    </select>
+                </td>
+                <td>
+                    <input type="number" name="points_new" value="1" min="0" step="0.5" class="points-input" required>
+                </td>
+                <td class="options-cell">
+                    <div class="options-container" data-question-id="new">
+                        <div class="option-row">
+                            <input type="radio" name="correct_new" value="new_1" checked>
+                            <input type="text" name="option_new_1" class="option-input" required>
+                            <button type="button" class="remove-option-btn" onclick="removeOption(this)">삭제</button>
+                        </div>
+                        <div class="option-row">
+                            <input type="radio" name="correct_new" value="new_2">
+                            <input type="text" name="option_new_2" class="option-input" required>
+                            <button type="button" class="remove-option-btn" onclick="removeOption(this)">삭제</button>
+                        </div>
+                        <div class="option-row">
+                            <input type="radio" name="correct_new" value="new_3">
+                            <input type="text" name="option_new_3" class="option-input" required>
+                            <button type="button" class="remove-option-btn" onclick="removeOption(this)">삭제</button>
+                        </div>
+                        <div class="option-row">
+                            <input type="radio" name="correct_new" value="new_4">
+                            <input type="text" name="option_new_4" class="option-input" required>
+                            <button type="button" class="remove-option-btn" onclick="removeOption(this)">삭제</button>
+                        </div>
+                    </div>
+                    <button type="button" class="add-option-btn" onclick="addOption('new')">옵션 추가</button>
+                </td>
+                <td>
+                    <button type="button" class="btn btn-danger" onclick="this.closest('tr').remove()">삭제</button>
+                </td>
+            `;
+            
+            tbody.appendChild(newRow);
+            setupRowEvents(newRow);
+        }
+        
+        // 페이지 로드 시 이벤트 설정
+        document.addEventListener('DOMContentLoaded', function() {
+            setupNumberChangeEvents();
+            
+            // 기존 행들에 이벤트 설정
+            document.querySelectorAll('.question-table tbody tr').forEach(row => {
+                setupRowEvents(row);
+            });
+        });
+    </script>
+</body>
+</html> 

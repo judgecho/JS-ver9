@@ -95,27 +95,147 @@
         }
         
         .choices-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 10px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
             margin-bottom: 15px;
         }
         
-        .choice-item {
+        .choice-button {
+            position: relative;
             display: flex;
             align-items: center;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background: #f8f9fa;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 120px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
         
-        .choice-radio {
+        .choice-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s;
+        }
+        
+        .choice-button:hover::before {
+            left: 100%;
+        }
+        
+        .choice-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            border-color: #007bff;
+        }
+        
+        .choice-button.selected {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            border-color: #007bff;
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0,123,255,0.3);
+        }
+        
+        .choice-button.selected .choice-number {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+        
+        .choice-number {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #007bff;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
             margin-right: 8px;
+            transition: all 0.3s ease;
         }
         
         .choice-text {
             flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            font-weight: 500;
+            color: inherit;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        
+        .choice-text::placeholder {
+            color: #6c757d;
+            opacity: 0.7;
+        }
+        
+        .choice-button.selected .choice-text::placeholder {
+            color: rgba(255,255,255,0.8);
+        }
+        
+        .choice-button:active {
+            transform: scale(0.98);
+        }
+        
+        /* 애니메이션 효과 */
+        @keyframes choicePulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        
+        .choice-button.animate {
+            animation: choicePulse 0.3s ease-in-out;
+        }
+        
+        /* 보기 추가/삭제 버튼 */
+        .choice-controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+        
+        .add-choice-btn, .remove-choice-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .add-choice-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+        
+        .add-choice-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(40,167,69,0.3);
+        }
+        
+        .remove-choice-btn {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+        }
+        
+        .remove-choice-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(220,53,69,0.3);
         }
         
         .answer-input {
@@ -284,6 +404,13 @@
         .btn-danger:hover {
             background: #c82333;
         }
+        
+        .success-feedback {
+            background-color: #d4edda !important;
+            border-color: #28a745 !important;
+            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25) !important;
+            transition: all 0.3s ease;
+        }
     </style>
 </head>
 <body>
@@ -326,7 +453,6 @@
                 <thead>
                     <tr>
                         <th width="80">번호</th>
-                        <th width="400">문제</th>
                         <th width="300">보기</th>
                         <th width="100">정답</th>
                         <th width="100">배점</th>
@@ -338,68 +464,43 @@
                         <td>
                             <input type="number" 
                                    name="number_{{ loop.index }}" 
-                                   value="{{ loop.index }}" 
+                                   value="{{ question.number }}" 
                                    min="1" 
                                    class="number-input"
                                    data-qid="{{ question.id }}"
                                    data-exam-id="{{ exam.id }}">
                         </td>
                         <td>
-                            <textarea name="question_{{ loop.index }}" 
-                                      class="question-text" 
-                                      placeholder="문제를 입력하세요" 
-                                      rows="3">{{ question.text }}</textarea>
-                        </td>
-                        <td>
                             <div class="choices-container">
-                                <div class="choice-row">
-                                    <input type="radio" 
-                                           name="correct_{{ loop.index }}" 
-                                           value="1" 
-                                           class="choice-radio"
-                                           {% if question.answer == '1' %}checked{% endif %}>
-                                    <input type="text" 
-                                           name="choice1_{{ loop.index }}" 
-                                           class="choice-text" 
-                                           placeholder="보기 1"
-                                           value="{{ question.choices[0].text if question.choices[0].text != '보기 1' else '' }}">
+                                <div class="choice-button" data-choice="1">
+                                    <div class="choice-number">1</div>
+                                    <input type="text" name="choice1_{{ loop.index }}" class="choice-text" placeholder="보기 1" value="{{ question.choices[0].text if question.choices[0].text != '보기 1' else '' }}">
+                                    <input type="radio" name="correct_{{ loop.index }}" value="1" style="display: none;" {% if question.answer == '1' %}checked{% endif %}>
                                 </div>
-                                <div class="choice-row">
-                                    <input type="radio" 
-                                           name="correct_{{ loop.index }}" 
-                                           value="2" 
-                                           class="choice-radio"
-                                           {% if question.answer == '2' %}checked{% endif %}>
-                                    <input type="text" 
-                                           name="choice2_{{ loop.index }}" 
-                                           class="choice-text" 
-                                           placeholder="보기 2"
-                                           value="{{ question.choices[1].text if question.choices[1].text != '보기 2' else '' }}">
+                                <div class="choice-button" data-choice="2">
+                                    <div class="choice-number">2</div>
+                                    <input type="text" name="choice2_{{ loop.index }}" class="choice-text" placeholder="보기 2" value="{{ question.choices[1].text if question.choices[1].text != '보기 2' else '' }}">
+                                    <input type="radio" name="correct_{{ loop.index }}" value="2" style="display: none;" {% if question.answer == '2' %}checked{% endif %}>
                                 </div>
-                                <div class="choice-row">
-                                    <input type="radio" 
-                                           name="correct_{{ loop.index }}" 
-                                           value="3" 
-                                           class="choice-radio"
-                                           {% if question.answer == '3' %}checked{% endif %}>
-                                    <input type="text" 
-                                           name="choice3_{{ loop.index }}" 
-                                           class="choice-text" 
-                                           placeholder="보기 3"
-                                           value="{{ question.choices[2].text if question.choices[2].text != '보기 3' else '' }}">
+                                <div class="choice-button" data-choice="3">
+                                    <div class="choice-number">3</div>
+                                    <input type="text" name="choice3_{{ loop.index }}" class="choice-text" placeholder="보기 3" value="{{ question.choices[2].text if question.choices[2].text != '보기 3' else '' }}">
+                                    <input type="radio" name="correct_{{ loop.index }}" value="3" style="display: none;" {% if question.answer == '3' %}checked{% endif %}>
                                 </div>
-                                <div class="choice-row">
-                                    <input type="radio" 
-                                           name="correct_{{ loop.index }}" 
-                                           value="4" 
-                                           class="choice-radio"
-                                           {% if question.answer == '4' %}checked{% endif %}>
-                                    <input type="text" 
-                                           name="choice4_{{ loop.index }}" 
-                                           class="choice-text" 
-                                           placeholder="보기 4"
-                                           value="{{ question.choices[3].text if question.choices[3].text != '보기 4' else '' }}">
+                                <div class="choice-button" data-choice="4">
+                                    <div class="choice-number">4</div>
+                                    <input type="text" name="choice4_{{ loop.index }}" class="choice-text" placeholder="보기 4" value="{{ question.choices[3].text if question.choices[3].text != '보기 4' else '' }}">
+                                    <input type="radio" name="correct_{{ loop.index }}" value="4" style="display: none;" {% if question.answer == '4' %}checked{% endif %}>
                                 </div>
+                                <div class="choice-button" data-choice="5">
+                                    <div class="choice-number">5</div>
+                                    <input type="text" name="choice5_{{ loop.index }}" class="choice-text" placeholder="보기 5" value="{{ question.choices[4].text if question.choices[4].text != '보기 5' else '' }}">
+                                    <input type="radio" name="correct_{{ loop.index }}" value="5" style="display: none;" {% if question.answer == '5' %}checked{% endif %}>
+                                </div>
+                            </div>
+                            <div class="choice-controls">
+                                <button type="button" class="add-choice-btn" data-question="{{ loop.index }}">보기 추가</button>
+                                <button type="button" class="remove-choice-btn" data-question="{{ loop.index }}">보기 삭제</button>
                             </div>
                         </td>
                         <td>
@@ -456,6 +557,12 @@
             // 총점 초기 계산
             updateTotalScore();
             
+            // 보기 버튼 상호작용 설정
+            setupChoiceButtonEvents();
+            
+            // 초기 선택 상태 설정
+            initializeChoiceSelection();
+            
             console.log('초기화 완료');
         });
 
@@ -467,6 +574,8 @@
                     const qid = this.dataset.qid;
                     const examId = this.dataset.examId;
                     const newNumber = parseInt(this.value);
+                    
+                    console.log('번호 변경 시도:', {qid, examId, newNumber});
                     
                     if (isNaN(newNumber) || newNumber < 1) {
                         alert('1 이상의 숫자를 입력하세요.');
@@ -488,13 +597,17 @@
                     })
                     .then(response => response.json())
                     .then(data => {
+                        console.log('서버 응답 전체:', data);
                         if (data.success) {
                             console.log('번호 변경 성공:', data.message);
                             this.defaultValue = newNumber;
                             
                             // 서버에서 받은 업데이트된 번호 목록으로 화면 업데이트
                             if (data.updated_numbers) {
+                                console.log('업데이트할 번호 목록:', data.updated_numbers);
                                 updateQuestionNumbers(data.updated_numbers);
+                            } else {
+                                console.warn('서버에서 updated_numbers를 받지 못했습니다.');
                             }
                             
                             // 피드백
@@ -503,8 +616,8 @@
                                 this.classList.remove('success-feedback');
                             }, 1000);
                         } else {
-                            console.error('번호 변경 실패:', data.message);
-                            alert('번호 변경에 실패했습니다: ' + data.message);
+                            console.error('번호 변경 실패:', data.message || data.error);
+                            alert('번호 변경에 실패했습니다: ' + (data.message || data.error));
                             this.value = this.defaultValue;
                         }
                     })
@@ -654,26 +767,36 @@
                     <input type="number" class="number-input" name="number_${newNumber}" value="${newNumber}" min="1" data-qid="${newNumber}" data-exam-id="{{ exam.id }}">
                 </td>
                 <td>
-                    <textarea name="question_${newNumber}" class="question-text" placeholder="문제를 입력하세요" rows="3"></textarea>
-                </td>
-                <td>
                     <div class="choices-container">
-                        <div class="choice-row">
-                            <input type="radio" name="correct_${newNumber}" value="1" class="choice-radio">
+                        <div class="choice-button" data-choice="1">
+                            <div class="choice-number">1</div>
                             <input type="text" name="choice1_${newNumber}" class="choice-text" placeholder="보기 1">
+                            <input type="radio" name="correct_${newNumber}" value="1" style="display: none;">
                         </div>
-                        <div class="choice-row">
-                            <input type="radio" name="correct_${newNumber}" value="2" class="choice-radio">
+                        <div class="choice-button" data-choice="2">
+                            <div class="choice-number">2</div>
                             <input type="text" name="choice2_${newNumber}" class="choice-text" placeholder="보기 2">
+                            <input type="radio" name="correct_${newNumber}" value="2" style="display: none;">
                         </div>
-                        <div class="choice-row">
-                            <input type="radio" name="correct_${newNumber}" value="3" class="choice-radio">
+                        <div class="choice-button" data-choice="3">
+                            <div class="choice-number">3</div>
                             <input type="text" name="choice3_${newNumber}" class="choice-text" placeholder="보기 3">
+                            <input type="radio" name="correct_${newNumber}" value="3" style="display: none;">
                         </div>
-                        <div class="choice-row">
-                            <input type="radio" name="correct_${newNumber}" value="4" class="choice-radio">
+                        <div class="choice-button" data-choice="4">
+                            <div class="choice-number">4</div>
                             <input type="text" name="choice4_${newNumber}" class="choice-text" placeholder="보기 4">
+                            <input type="radio" name="correct_${newNumber}" value="4" style="display: none;">
                         </div>
+                        <div class="choice-button" data-choice="5">
+                            <div class="choice-number">5</div>
+                            <input type="text" name="choice5_${newNumber}" class="choice-text" placeholder="보기 5">
+                            <input type="radio" name="correct_${newNumber}" value="5" style="display: none;">
+                        </div>
+                    </div>
+                    <div class="choice-controls">
+                        <button type="button" class="add-choice-btn" data-question="${newNumber}">보기 추가</button>
+                        <button type="button" class="remove-choice-btn" data-question="${newNumber}">보기 삭제</button>
                     </div>
                 </td>
                 <td>
@@ -727,6 +850,8 @@
                     const examId = this.dataset.examId;
                     const newNumber = parseInt(this.value);
                     
+                    console.log('새 행 번호 변경 시도:', {qid, examId, newNumber});
+                    
                     if (isNaN(newNumber) || newNumber < 1) {
                         alert('1 이상의 숫자를 입력하세요.');
                         this.value = this.defaultValue;
@@ -747,13 +872,17 @@
                     })
                     .then(response => response.json())
                     .then(data => {
+                        console.log('새 행 서버 응답 전체:', data);
                         if (data.success) {
-                            console.log('번호 변경 성공:', data.message);
+                            console.log('새 행 번호 변경 성공:', data.message);
                             this.defaultValue = newNumber;
                             
                             // 서버에서 받은 업데이트된 번호 목록으로 화면 업데이트
                             if (data.updated_numbers) {
+                                console.log('새 행 업데이트할 번호 목록:', data.updated_numbers);
                                 updateQuestionNumbers(data.updated_numbers);
+                            } else {
+                                console.warn('새 행 서버에서 updated_numbers를 받지 못했습니다.');
                             }
                             
                             // 피드백
@@ -762,13 +891,13 @@
                                 this.classList.remove('success-feedback');
                             }, 1000);
                         } else {
-                            console.error('번호 변경 실패:', data.message);
-                            alert('번호 변경에 실패했습니다: ' + data.message);
+                            console.error('새 행 번호 변경 실패:', data.message || data.error);
+                            alert('번호 변경에 실패했습니다: ' + (data.message || data.error));
                             this.value = this.defaultValue;
                         }
                     })
                     .catch(error => {
-                        console.error('AJAX 오류:', error);
+                        console.error('새 행 AJAX 오류:', error);
                         alert('번호 변경 중 오류가 발생했습니다.');
                         this.value = this.defaultValue;
                     });
@@ -786,22 +915,18 @@
                         const radio = tr.querySelector(`input[type="radio"][value="${value}"]`);
                         if (radio) {
                             radio.checked = true;
+                            // 보기 버튼 선택 상태 업데이트
+                            tr.querySelectorAll('.choice-button').forEach(btn => {
+                                btn.classList.remove('selected');
+                            });
+                            const selectedButton = tr.querySelector(`.choice-button[data-choice="${value}"]`);
+                            if (selectedButton) {
+                                selectedButton.classList.add('selected');
+                            }
                         }
                     }
                 });
             }
-            
-            // 보기 선택 이벤트
-            const choiceRadios = row.querySelectorAll('.choice-radio');
-            choiceRadios.forEach(radio => {
-                radio.addEventListener('change', function() {
-                    if (this.checked) {
-                        const tr = this.closest('tr');
-                        const answerInput = tr.querySelector('.answer-input');
-                        answerInput.value = this.value;
-                    }
-                });
-            });
             
             // 배점 입력 이벤트
             const scoreInput = row.querySelector('.score-input');
@@ -830,6 +955,9 @@
                     }, 1000);
                 });
             }
+            
+            // 보기 버튼 이벤트 설정
+            setupChoiceButtonEventsForRow(row);
         }
         
         // 기본 배점 가져오기
@@ -895,10 +1023,169 @@
                     numberInput.value = item.new_number;
                     numberInput.defaultValue = item.new_number;
                     console.log(`문항 ${item.qid} 번호 업데이트: ${oldValue} -> ${item.new_number}`);
+                    
+                    // 시각적 피드백 추가
+                    numberInput.classList.add('success-feedback');
+                    setTimeout(() => {
+                        numberInput.classList.remove('success-feedback');
+                    }, 1000);
+                } else {
+                    console.warn(`문항 ID ${item.qid}에 해당하는 입력란을 찾을 수 없습니다.`);
                 }
             });
             
             console.log('화면 번호 업데이트 완료');
+        }
+
+        // 보기 버튼 상호작용 설정
+        function setupChoiceButtonEvents() {
+            // 모든 기존 행에 대해 보기 버튼 이벤트 설정
+            document.querySelectorAll('.question-row').forEach(row => {
+                setupChoiceButtonEventsForRow(row);
+            });
+        }
+        
+        // 개별 행에 대한 보기 버튼 이벤트 설정
+        function setupChoiceButtonEventsForRow(row) {
+            // 보기 버튼 클릭 이벤트
+            row.querySelectorAll('.choice-button').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    // 텍스트 입력 필드 클릭 시에는 선택하지 않음
+                    if (e.target.classList.contains('choice-text')) {
+                        return;
+                    }
+                    
+                    const questionRow = this.closest('tr');
+                    const radio = this.querySelector('input[type="radio"]');
+                    const answerInput = questionRow.querySelector('.answer-input');
+                    
+                    // 이전 선택 해제
+                    questionRow.querySelectorAll('.choice-button').forEach(btn => {
+                        btn.classList.remove('selected');
+                    });
+                    
+                    // 현재 버튼 선택
+                    this.classList.add('selected');
+                    radio.checked = true;
+                    answerInput.value = radio.value;
+                    
+                    // 애니메이션 효과
+                    this.classList.add('animate');
+                    setTimeout(() => {
+                        this.classList.remove('animate');
+                    }, 300);
+                    
+                    console.log('보기 선택:', radio.value);
+                });
+            });
+            
+            // 보기 추가 버튼 이벤트
+            row.querySelectorAll('.add-choice-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const questionIndex = this.dataset.question;
+                    const questionRow = this.closest('tr');
+                    const choicesContainer = questionRow.querySelector('.choices-container');
+                    const currentChoices = choicesContainer.querySelectorAll('.choice-button');
+                    
+                    if (currentChoices.length < 10) { // 최대 10개 보기
+                        const newChoiceNumber = currentChoices.length + 1;
+                        const newChoice = document.createElement('div');
+                        newChoice.className = 'choice-button';
+                        newChoice.dataset.choice = newChoiceNumber;
+                        newChoice.innerHTML = `
+                            <div class="choice-number">${newChoiceNumber}</div>
+                            <input type="text" name="choice${newChoiceNumber}_${questionIndex}" class="choice-text" placeholder="보기 ${newChoiceNumber}">
+                            <input type="radio" name="correct_${questionIndex}" value="${newChoiceNumber}" style="display: none;">
+                        `;
+                        
+                        choicesContainer.appendChild(newChoice);
+                        
+                        // 새 보기에 이벤트 리스너 추가
+                        setupChoiceButtonEventsForRow(questionRow);
+                        
+                        // 애니메이션 효과
+                        newChoice.style.opacity = '0';
+                        newChoice.style.transform = 'scale(0.8)';
+                        setTimeout(() => {
+                            newChoice.style.transition = 'all 0.3s ease';
+                            newChoice.style.opacity = '1';
+                            newChoice.style.transform = 'scale(1)';
+                        }, 10);
+                        
+                        console.log('보기 추가:', newChoiceNumber);
+                    } else {
+                        alert('최대 10개까지 보기를 추가할 수 있습니다.');
+                    }
+                });
+            });
+            
+            // 보기 삭제 버튼 이벤트
+            row.querySelectorAll('.remove-choice-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const questionRow = this.closest('tr');
+                    const choicesContainer = questionRow.querySelector('.choices-container');
+                    const currentChoices = choicesContainer.querySelectorAll('.choice-button');
+                    
+                    if (currentChoices.length > 2) { // 최소 2개 보기
+                        const lastChoice = currentChoices[currentChoices.length - 1];
+                        
+                        // 애니메이션 효과
+                        lastChoice.style.transition = 'all 0.3s ease';
+                        lastChoice.style.opacity = '0';
+                        lastChoice.style.transform = 'scale(0.8)';
+                        
+                        setTimeout(() => {
+                            choicesContainer.removeChild(lastChoice);
+                            
+                            // 번호 재정렬
+                            currentChoices.forEach((choice, index) => {
+                                if (choice !== lastChoice) {
+                                    const numberDiv = choice.querySelector('.choice-number');
+                                    const radio = choice.querySelector('input[type="radio"]');
+                                    const textInput = choice.querySelector('.choice-text');
+                                    
+                                    numberDiv.textContent = index + 1;
+                                    choice.dataset.choice = index + 1;
+                                    radio.value = index + 1;
+                                    textInput.name = `choice${index + 1}_${this.dataset.question}`;
+                                    textInput.placeholder = `보기 ${index + 1}`;
+                                }
+                            });
+                        }, 300);
+                        
+                        console.log('보기 삭제');
+                    } else {
+                        alert('최소 2개의 보기는 있어야 합니다.');
+                    }
+                });
+            });
+            
+            // 텍스트 입력 필드 포커스 이벤트
+            row.querySelectorAll('.choice-text').forEach(input => {
+                input.addEventListener('focus', function() {
+                    const button = this.closest('.choice-button');
+                    button.style.transform = 'scale(1.02)';
+                    button.style.boxShadow = '0 6px 20px rgba(0,123,255,0.2)';
+                });
+                
+                input.addEventListener('blur', function() {
+                    const button = this.closest('.choice-button');
+                    if (!button.classList.contains('selected')) {
+                        button.style.transform = '';
+                        button.style.boxShadow = '';
+                    }
+                });
+            });
+        }
+        
+        // 초기 선택 상태 설정
+        function initializeChoiceSelection() {
+            document.querySelectorAll('.choice-button').forEach(button => {
+                const radio = button.querySelector('input[type="radio"]');
+                if (radio.checked) {
+                    button.classList.add('selected');
+                }
+            });
         }
     </script>
 </body>

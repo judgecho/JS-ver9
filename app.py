@@ -571,70 +571,65 @@ def update_question_number():
     if not qid or not new_number or not exam_id:
         return jsonify({'error': '필수 파라미터가 누락되었습니다.'}), 400
     
-    # 실제 질문 ID로 질문 찾기
     question = db.session.get(Question, qid)
+    if not question or question.exam_id != int(exam_id):
+        return jsonify({'error': '질문을 찾을 수 없습니다.'}), 404
     
-    if question and question.exam_id == int(exam_id):
-        old_number = question.question_number
+    try:
         target_number = int(new_number)
+        original_number = question.question_number
         
-        # 해당 시험의 모든 질문 가져오기
-        all_questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
-        total_questions = len(all_questions)
+        # 모든 질문을 question_number 순서로 가져오기
+        all_questions = Question.query.filter_by(exam_id=int(exam_id)).order_by(Question.question_number).all()
         
-        print(f"총 문항 수: {total_questions}, 요청된 번호: {target_number}")
+        print(f"변경 전 번호 순서: {[q.question_number for q in all_questions]}")
+        print(f"문항 {qid}의 번호를 {original_number} -> {target_number}로 변경")
         
-        # 번호 유효성 검사
-        if target_number < 1 or target_number > total_questions:
-            return jsonify({'error': f'번호는 1부터 {total_questions}까지 입력 가능합니다.'}), 400
+        # 변경할 문항의 현재 위치 찾기
+        target_question_index = None
+        for i, q in enumerate(all_questions):
+            if q.id == int(qid):
+                target_question_index = i
+                break
         
-        # 번호가 실제로 변경되었는지 확인
-        if old_number == target_number:
-            return jsonify({'success': True, 'message': '번호가 변경되지 않았습니다.'})
+        if target_question_index is None:
+            return jsonify({'error': '질문을 찾을 수 없습니다.'}), 404
         
-        # 새로운 번호 재정렬 로직
-        try:
-            # 1. 모든 문항을 임시로 9999로 설정 (중복 방지)
-            for q in all_questions:
-                q.question_number = 9999
-            
-            # 2. 대상 문항을 원하는 위치에 배치
-            question.question_number = target_number
-            
-            # 3. 나머지 문항들을 순서대로 배치
-            current_number = 1
-            for q in all_questions:
-                if q.id != question.id:  # 대상 문항 제외
-                    # 변경된 번호보다 작은 위치에 배치
-                    if current_number < target_number:
-                        q.question_number = current_number
-                        current_number += 1
-                    else:
-                        # 변경된 번호 다음부터 배치
-                        q.question_number = current_number + 1
-                        current_number += 1
-            
-            db.session.commit()
-            
-            print(f"번호 변경 성공: 문항 {question.id} 번호 {old_number} -> {target_number}")
-            print("전체 번호 재정렬 완료")
-            
-            # 업데이트된 번호 목록 반환
-            updated_questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
-            updated_numbers = [{'qid': q.id, 'new_number': q.question_number} for q in updated_questions]
-            
-            return jsonify({
-                'success': True, 
-                'message': f'번호가 {old_number}에서 {target_number}로 변경되었습니다.',
-                'updated_numbers': updated_numbers
+        # 1. 변경할 문항을 새 번호로 설정
+        question.question_number = target_number
+        
+        # 2. 변경할 문항 이후의 문항들만 새 번호+1부터 순서대로 재배치
+        next_number = target_number + 1
+        for i in range(target_question_index + 1, len(all_questions)):
+            all_questions[i].question_number = next_number
+            next_number += 1
+        
+        # 변경사항 저장
+        db.session.commit()
+        
+        # 업데이트된 모든 질문 정보 수집 (정렬된 순서로)
+        updated_questions = Question.query.filter_by(exam_id=int(exam_id)).order_by(Question.question_number).all()
+        updated_numbers = []
+        for q in updated_questions:
+            updated_numbers.append({
+                'qid': q.id,
+                'new_number': q.question_number
             })
-            
-        except Exception as e:
-            db.session.rollback()
-            print(f"번호 변경 중 오류 발생: {str(e)}")
-            return jsonify({'error': f'번호 변경 중 오류가 발생했습니다: {str(e)}'}), 500
-    
-    return jsonify({'error': '질문을 찾을 수 없습니다.'}), 404
+        
+        final_numbers = [q.question_number for q in updated_questions]
+        print(f"번호 변경 성공: 문항 {qid} -> {target_number}, 이후 문항들 연속 번호 부여")
+        print(f"최종 번호 순서: {final_numbers}")
+        
+        return jsonify({
+            'success': True,
+            'updated_numbers': updated_numbers,
+            'message': f'질문 번호가 {target_number}번으로 변경되었습니다.'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"번호 변경 실패: {str(e)}")
+        return jsonify({'error': f'번호 변경 중 오류가 발생했습니다: {str(e)}'}), 500
 
 # ChatGPT API 관련 라우트들
 @app.route('/chatgpt/chat', methods=['GET', 'POST'])
