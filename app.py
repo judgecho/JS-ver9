@@ -236,21 +236,16 @@ def edit_exam(exam_id):
             new_number = request.form.get(f'number_{q.id}')
             if new_number and new_number.isdigit():
                 new_numbers[q.id] = int(new_number)
-                print(f"문항 {q.id}: 새 번호 {new_number}")
-        if new_numbers:
-            sorted_questions = sorted(new_numbers.items(), key=lambda x: x[1])
-            for i, (q_id, _) in enumerate(sorted_questions, 1):
-                q = Question.query.get(q_id)
-                if q:
-                    old_number = q.question_number
-                    q.question_number = i
-                    print(f"문항 {q_id} 번호 변경: {old_number} -> {i}")
-            db.session.commit()
-            print("번호 변경 완료 - 순차적 넘버링 적용")
-            questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
-            flash('문항 번호가 성공적으로 변경되었습니다.', 'success')
-        else:
-            print("변경할 번호가 없습니다.")
+        # 번호 변경 적용
+        for q in questions:
+            if q.id in new_numbers:
+                print(f"문항 {q.id} 번호 변경: {q.question_number} -> {new_numbers[q.id]}")
+                q.question_number = new_numbers[q.id]
+        # 번호를 오름차순으로 정렬 후 1부터 연속 부여
+        questions_sorted = sorted(questions, key=lambda x: x.question_number)
+        for idx, q in enumerate(questions_sorted, 1):
+            q.question_number = idx
+        print("번호 변경 완료 - 순차적 넘버링 적용")
 
         # 문항 내용 및 배점 업데이트
         for q in questions:
