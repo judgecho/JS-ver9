@@ -331,20 +331,11 @@
                           </div>
                         </td>
                         <td class="answer-col" style="text-align: center;">
-                            <input type="text" name="answer_{{ q.id }}" value="{{ q.answer or '' }}" 
-                                   class="answer-input" placeholder="정답" autocomplete="off"
-                                   onkeydown="if(event.key==='Enter'){event.preventDefault(); var inputs=document.querySelectorAll('.answer-input'); var idx=Array.from(inputs).indexOf(this); if(idx<inputs.length-1) inputs[idx+1].focus();}"
-                                   title="정답을 입력하세요">
+                            <input type="text" name="answer_{{ q.id }}" value="{{ q.answer or '' }}" class="answer-input" placeholder="정답" autocomplete="off" title="정답을 입력하세요">
                         </td>
                         <td class="score-col" style="text-align: center;">
-                            <input type="number" name="score_{{ q.id }}" value="{{ q.score or 0 }}" 
-                                   step="0.1" min="0" max="100" class="score-input"
-                                   title="개별 배점 설정 (나머지 문항은 자동 조정)">
-                            <button type="button" class="reset-score-btn" 
-                                    onclick="resetToDefaultScore({{ q.id }}, {{ "%.1f"|format(exam.total_score / questions|length) }})"
-                                    title="기본 배점으로 되돌리기">
-                                기본값
-                            </button>
+                            <input type="number" name="score_{{ q.id }}" value="{{ q.score or 0 }}" step="0.1" min="0" max="100" class="score-input" title="개별 배점 설정 (나머지 문항은 자동 조정)">
+                            <button type="button" class="reset-score-btn">기본값</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -362,174 +353,150 @@
     </div>
 
     <script>
-        // 정답 선택 버튼 클릭 시 정답란에 자동 입력
-        document.addEventListener('DOMContentLoaded', function() {
-            // 정답 선택 버튼 클릭 이벤트
-            document.querySelectorAll('.choice-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const qid = this.closest('.choices-edit').getAttribute('data-qid');
-                    const choice = this.getAttribute('data-choice');
+    document.addEventListener('DOMContentLoaded', function() {
+        // 번호 변경 AJAX
+        let isNumberChangeInProgress = false;
+        document.querySelectorAll('.number-input').forEach(function(input) {
+            input.addEventListener('change', function() {
+                if (isNumberChangeInProgress) return;
+                isNumberChangeInProgress = true;
+                const qid = this.dataset.qid;
+                const examId = this.dataset.examId;
+                const newNumber = this.value;
+                fetch('/api/update_question_number', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: `qid=${qid}&new_number=${newNumber}&exam_id=${examId}`
+                })
+                .then(res => res.json())
+                .then(data => {
+                    isNumberChangeInProgress = false;
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('번호 변경 실패: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    isNumberChangeInProgress = false;
+                    alert('번호 변경 중 오류가 발생했습니다: ' + error.message);
+                });
+            });
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.blur();
+                }
+            });
+        });
+
+        // 정답 입력란과 라디오 버튼 동기화 - 개선된 버전
+        document.querySelectorAll('.answer-input').forEach(function(input) {
+            input.addEventListener('input', function() {
+                const qid = this.name.split('_')[1];
+                const value = this.value;
+                // 라디오 버튼 동기화
+                document.querySelectorAll(`.choices-edit[data-qid="${qid}"] .choice-btn`).forEach(btn => {
+                    btn.classList.remove('selected');
+                    const radio = btn.querySelector('input[type="radio"]');
+                    if (btn.getAttribute('data-choice') === value) {
+                        btn.classList.add('selected');
+                        radio.checked = true;
+                    } else {
+                        radio.checked = false;
+                    }
+                });
+            });
+        });
+
+        // 라디오 버튼 클릭 시 정답 입력란 동기화 - 개선된 버전
+        document.querySelectorAll('.choices-edit').forEach(function(container) {
+            container.addEventListener('click', function(e) {
+                if (e.target.classList.contains('choice-btn') || e.target.closest('.choice-btn')) {
+                    const btn = e.target.classList.contains('choice-btn') ? e.target : e.target.closest('.choice-btn');
+                    const qid = this.getAttribute('data-qid');
+                    const value = btn.getAttribute('data-choice');
+                    const radio = btn.querySelector('input[type="radio"]');
                     
                     // 라디오 버튼 체크
-                    const radio = this.querySelector('input[type="radio"]');
                     radio.checked = true;
                     
-                    // 정답란에 입력
+                    // 정답 입력란 업데이트
                     const answerInput = document.querySelector(`input[name="answer_${qid}"]`);
                     if (answerInput) {
-                        answerInput.value = choice;
+                        answerInput.value = value;
                     }
                     
-                    // 선택 상태 시각적 업데이트
+                    // 선택 상태 업데이트
                     document.querySelectorAll(`.choices-edit[data-qid="${qid}"] .choice-btn`).forEach(b => {
                         b.classList.remove('selected');
                     });
-                    this.classList.add('selected');
-                });
-            });
-            
-            // 정답란 입력 필드 이벤트
-            document.querySelectorAll('.answer-input').forEach(input => {
-                input.addEventListener('input', function() {
-                    const qid = this.name.split('_')[1];
-                    const value = this.value;
-                    
-                    // 정답 선택 버튼 상태 업데이트
-                    document.querySelectorAll(`.choices-edit[data-qid="${qid}"] .choice-btn`).forEach(btn => {
-                        btn.classList.remove('selected');
-                        const radio = btn.querySelector('input[type="radio"]');
-                        if (btn.getAttribute('data-choice') === value) {
-                            btn.classList.add('selected');
-                            radio.checked = true;
-                        } else {
-                            radio.checked = false;
-                        }
-                    });
-                });
-            });
-            
-            // 정답 입력란에서 엔터 시 다음 정답 입력란으로 이동 (폼 submit 방지)
-            const answerInputs = Array.from(document.querySelectorAll('.answer-input'));
-            answerInputs.forEach((input, idx) => {
-                input.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (idx < answerInputs.length - 1) {
-                            answerInputs[idx + 1].focus();
-                        }
-                    }
-                });
-            });
-        });
-        
-        // 라디오 버튼 변경 시 정답 표시 업데이트
-        document.querySelectorAll('input[type="radio"]').forEach(radio => {
-            radio.addEventListener('change', function() {
-                const qid = this.name.split('_')[1];
-                const answer = this.value;
-                const answerInput = document.querySelector(`input[name="answer_${qid}"]`);
-                if (answerInput) {
-                    answerInput.value = answer;
+                    btn.classList.add('selected');
                 }
             });
         });
-        
-        // 배점 변경 시 총점 계산 및 안내
-        function updateTotalScore() {
-            const scoreInputs = document.querySelectorAll('input[name^="score_"]');
-            let totalScore = 0;
-            let manualScores = {};
-            let manualCount = 0;
-            
-            // 수동으로 입력된 배점 수집
-            scoreInputs.forEach(input => {
-                const score = parseFloat(input.value) || 0;
-                if (score > 0) {
-                    const qid = input.name.split('_')[1];
-                    manualScores[qid] = score;
-                    manualCount++;
-                }
-                totalScore += score;
-            });
-            
-            // 총점 표시 업데이트 (실시간 계산)
-            const totalDisplay = document.getElementById('currentTotalScore');
-            if (totalDisplay) {
-                totalDisplay.textContent = `${totalScore.toFixed(1)}점`;
-                
-                // 동적으로 총점 계산 (문항 수 × 기본 배점)
-                const questionCount = scoreInputs.length;
-                const defaultScore = parseFloat(document.getElementById('newDefaultScore').value) || ({{ exam.total_score }} / questionCount);
-                const expectedTotal = questionCount * defaultScore;
-                
-                if (totalScore > expectedTotal) {
-                    totalDisplay.style.color = 'red';
-                } else if (Math.abs(totalScore - expectedTotal) < 0.1) {
-                    totalDisplay.style.color = 'green';
-                } else {
-                    totalDisplay.style.color = 'orange';
-                }
-            }
-            
-            // 안내 메시지 업데이트
-            const infoDisplay = document.querySelector('.scoring-info .info');
-            if (infoDisplay) {
-                const questionCount = scoreInputs.length;
-                const defaultScore = parseFloat(document.getElementById('newDefaultScore').value) || ({{ exam.total_score }} / questionCount);
-                const expectedTotal = questionCount * defaultScore;
-                
-                if (totalScore > expectedTotal) {
-                    infoDisplay.textContent = `⚠️ 현재 총점: ${totalScore.toFixed(1)}점`;
-                    infoDisplay.style.color = 'red';
-                } else if (Math.abs(totalScore - expectedTotal) < 0.1) {
-                    infoDisplay.textContent = '✅ 배점이 완벽하게 설정되었습니다.';
-                    infoDisplay.style.color = 'green';
-                } else {
-                    const remaining = expectedTotal - totalScore;
-                    const remainingQuestions = scoreInputs.length - manualCount;
-                    if (remainingQuestions > 0) {
-                        const avgScore = (remaining / remainingQuestions).toFixed(1);
-                        infoDisplay.textContent = `💡 나머지 ${remainingQuestions}개 문항의 배점이 각각 ${avgScore}점으로 자동 조정됩니다.`;
-                        infoDisplay.style.color = 'blue';
-                        
-                        // 실시간으로 나머지 문항들의 배점 미리보기 표시
-                        showPreviewScores(manualScores, avgScore);
-                    } else {
-                        infoDisplay.textContent = `⚠️ 현재 총점: ${totalScore.toFixed(1)}점`;
-                        infoDisplay.style.color = 'orange';
+
+        // 정답 입력란에서 엔터 시 다음 입력란으로 이동
+        const answerInputs = Array.from(document.querySelectorAll('.answer-input'));
+        answerInputs.forEach((input, idx) => {
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (idx < answerInputs.length - 1) {
+                        answerInputs[idx + 1].focus();
                     }
                 }
-            }
-        }
-        
-        // 나머지 문항들의 배점 미리보기 표시
-        function showPreviewScores(manualScores, avgScore) {
-            const scoreInputs = document.querySelectorAll('input[name^="score_"]');
-            scoreInputs.forEach(input => {
-                const qid = input.name.split('_')[1];
-                if (!(qid in manualScores)) {
-                    // 미리보기 스타일 적용
-                    input.style.backgroundColor = '#e8f4fd';
-                    input.style.borderColor = '#007bff';
-                    
-                    // 툴팁 추가
-                    input.title = `자동 조정 예상 배점: ${avgScore}점`;
-                } else {
-                    // 수동 배점 스타일
-                    input.style.backgroundColor = '#fff3cd';
-                    input.style.borderColor = '#ffc107';
-                    input.title = '수동 설정 배점';
+            });
+        });
+
+        // 기본 배점 변경 버튼 - 개선된 버전
+        const defaultScoreBtn = document.querySelector('.control-group button.btn-warning');
+        if (defaultScoreBtn) {
+            defaultScoreBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const newDefaultInput = document.getElementById('newDefaultScore');
+                if (!newDefaultInput) {
+                    alert('기본 배점 입력란을 찾을 수 없습니다.');
+                    return;
+                }
+                
+                const newDefault = parseFloat(newDefaultInput.value);
+                if (isNaN(newDefault) || newDefault <= 0) {
+                    alert('기본 배점은 0보다 커야 합니다.');
+                    return;
+                }
+                
+                const questionCount = document.querySelectorAll('.score-input').length;
+                const newTotal = newDefault * questionCount;
+                
+                if (confirm(`기본 배점을 ${newDefault}점으로 변경하시겠습니까?\n\n총점이 ${newTotal}점으로 변경됩니다.`)) {
+                    const form = document.querySelector('form');
+                    let flagInput = form.querySelector('input[name="update_default_score"]');
+                    if (!flagInput) {
+                        flagInput = document.createElement('input');
+                        flagInput.type = 'hidden';
+                        flagInput.name = 'update_default_score';
+                        form.appendChild(flagInput);
+                    }
+                    flagInput.value = newDefault;
+                    form.submit();
                 }
             });
         }
-        
-        // 기본 배점으로 되돌리기
-        function resetToDefaultScore(questionId, defaultScore) {
-            const scoreInput = document.querySelector(`input[name="score_${questionId}"]`);
-            if (scoreInput) {
+
+        // 배점 리셋 버튼
+        document.querySelectorAll('.reset-score-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const tr = btn.closest('tr');
+                const scoreInput = tr.querySelector('.score-input');
+                const questionCount = document.querySelectorAll('.score-input').length;
+                // 기본 배점 계산: 총점 / 문항수
+                let totalScore = parseFloat(document.getElementById('currentTotalScore')?.textContent) || 100;
+                if (isNaN(totalScore) || totalScore <= 0) {
+                    totalScore = 100;
+                }
+                const defaultScore = (totalScore / questionCount).toFixed(1);
                 scoreInput.value = defaultScore;
-                updateTotalScore();
-                
                 // 시각적 피드백
                 scoreInput.style.backgroundColor = '#d4edda';
                 scoreInput.style.borderColor = '#28a745';
@@ -537,171 +504,9 @@
                     scoreInput.style.backgroundColor = '';
                     scoreInput.style.borderColor = '';
                 }, 1000);
-            }
-        }
-        
-        // 배점 입력 필드에 이벤트 리스너 추가
-        document.addEventListener('DOMContentLoaded', function() {
-            const scoreInputs = document.querySelectorAll('input[name^="score_"]');
-            scoreInputs.forEach(input => {
-                input.addEventListener('input', updateTotalScore);
-                input.addEventListener('focus', function() {
-                    this.style.backgroundColor = '#fff';
-                    this.style.borderColor = '#007bff';
-                });
-                input.addEventListener('blur', updateTotalScore);
-            });
-            
-            // 초기 총점 계산
-            updateTotalScore();
-        });
-        
-        // 모든 배점을 기본값으로 되돌리기
-        function resetAllScores() {
-            const questionCount = {{ questions|length }};
-            const defaultScore = ({{ exam.total_score }} / questionCount).toFixed(1);
-            
-            const scoreInputs = document.querySelectorAll('input[name^="score_"]');
-            scoreInputs.forEach(input => {
-                input.value = defaultScore;
-                input.style.backgroundColor = '#d4edda';
-                input.style.borderColor = '#28a745';
-            });
-            
-            // 1초 후 스타일 복원
-            setTimeout(() => {
-                scoreInputs.forEach(input => {
-                    input.style.backgroundColor = '';
-                    input.style.borderColor = '';
-                });
-            }, 1000);
-            
-            updateTotalScore();
-            
-            // 사용자에게 알림
-            const infoDisplay = document.querySelector('.scoring-info .info');
-            if (infoDisplay) {
-                infoDisplay.textContent = '✅ 모든 배점이 기본값으로 초기화되었습니다.';
-                infoDisplay.style.color = 'green';
-            }
-        }
-        
-        // 문항 수 변경 함수
-        function updateQuestionCount() {
-            const newCount = parseInt(document.querySelector('input[name="question_count"]').value);
-            const currentCount = {{ questions|length }};
-            
-            if (newCount < 1 || newCount > 100) {
-                alert('문항 수는 1~100개 사이로 설정해주세요.');
-                return;
-            }
-            
-            if (newCount === currentCount) {
-                alert('현재 문항 수와 동일합니다.');
-                return;
-            }
-            
-            if (confirm(`문항 수를 ${currentCount}개에서 ${newCount}개로 변경하시겠습니까?\\n\\n⚠️ 기존 문항들의 내용과 배점이 모두 삭제됩니다.`)) {
-                // 폼에 문항 수 변경 플래그 추가
-                const form = document.querySelector('form');
-                const flagInput = document.createElement('input');
-                flagInput.type = 'hidden';
-                flagInput.name = 'update_question_count';
-                flagInput.value = 'true';
-                form.appendChild(flagInput);
-                
-                // 폼 제출
-                form.submit();
-            }
-        }
-        
-        // 기본 배점 변경 함수
-        function updateDefaultScore() {
-            const newDefault = parseFloat(document.getElementById('newDefaultScore').value);
-            if (isNaN(newDefault) || newDefault <= 0) {
-                alert('기본 배점은 0보다 커야 합니다.');
-                return;
-            }
-            
-            const questionCount = {{ questions|length }};
-            const newTotal = newDefault * questionCount;
-            
-            if (confirm(`기본 배점을 ${newDefault}점으로 변경하시겠습니까?\\n\\n총점이 ${newTotal}점으로 변경됩니다.`)) {
-                // 폼에 기본 배점 변경 플래그 추가
-                const form = document.querySelector('form');
-                const flagInput = document.createElement('input');
-                flagInput.type = 'hidden';
-                flagInput.name = 'update_default_score';
-                flagInput.value = newDefault;
-                form.appendChild(flagInput);
-                
-                // 폼 제출
-                form.submit();
-            }
-        }
-        
-        // AJAX 번호 변경 스크립트
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('.number-input').forEach(function(input) {
-                // input 이벤트 (값 변경 시 즉시)
-                input.addEventListener('input', function() {
-                    const qid = this.dataset.qid;
-                    const examId = this.dataset.examId;
-                    const newNumber = this.value;
-                    
-                    console.log('AJAX 번호 변경 요청:', {qid, examId, newNumber});
-                    
-                    fetch('/api/update_question_number', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: `qid=${qid}&new_number=${newNumber}&exam_id=${examId}`
-                    })
-                    .then(res => {
-                        console.log('AJAX 응답 상태:', res.status);
-                        return res.json();
-                    })
-                    .then(data => {
-                        console.log('AJAX 응답 데이터:', data);
-                        if (data.success) {
-                            console.log('번호 변경 성공:', data.message);
-                            location.reload();
-                        } else {
-                            console.log('번호 변경 실패:', data.message);
-                            alert('번호 변경 실패: ' + data.message);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('AJAX 오류:', error);
-                        alert('번호 변경 중 오류가 발생했습니다: ' + error.message);
-                    });
-                });
-                
-                // 모든 키 이벤트 차단
-                input.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        return false;
-                    }
-                });
-                
-                input.addEventListener('keyup', function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        return false;
-                    }
-                });
-                
-                input.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        return false;
-                    }
-                });
             });
         });
+    });
     </script>
 </body>
 </html>
