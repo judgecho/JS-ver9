@@ -364,9 +364,6 @@
                 const examId = this.dataset.examId;
                 const newNumber = this.value;
                 
-                // 현재 모든 입력값 저장
-                const currentState = saveCurrentState();
-                
                 fetch('/api/update_question_number', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -378,8 +375,6 @@
                     if (data.success) {
                         // 새로고침 대신 DOM 업데이트
                         updateQuestionNumbers();
-                        // 저장된 상태 복원
-                        restoreState(currentState);
                     } else {
                         alert('번호 변경 실패: ' + data.message);
                     }
@@ -396,35 +391,6 @@
                 }
             });
         });
-
-        // 현재 상태 저장 함수
-        function saveCurrentState() {
-            const state = {};
-            document.querySelectorAll('.answer-input').forEach(input => {
-                const qid = input.name.split('_')[1];
-                state[qid] = {
-                    answer: input.value,
-                    score: document.querySelector(`input[name="score_${qid}"]`)?.value || '0'
-                };
-            });
-            return state;
-        }
-
-        // 상태 복원 함수
-        function restoreState(state) {
-            Object.keys(state).forEach(qid => {
-                const answerInput = document.querySelector(`input[name="answer_${qid}"]`);
-                const scoreInput = document.querySelector(`input[name="score_${qid}"]`);
-                if (answerInput) {
-                    answerInput.value = state[qid].answer;
-                    // 라디오 버튼 동기화
-                    syncRadioWithAnswer(qid, state[qid].answer);
-                }
-                if (scoreInput) {
-                    scoreInput.value = state[qid].score;
-                }
-            });
-        }
 
         // 문항 번호 업데이트 함수
         function updateQuestionNumbers() {
@@ -457,7 +423,7 @@
             });
         });
 
-        // 라디오 버튼 클릭 시 정답 입력란 동기화
+        // 라디오 버튼 클릭 시 정답 입력란 동기화 - 수정된 버전
         document.querySelectorAll('.choices-edit').forEach(function(container) {
             container.addEventListener('click', function(e) {
                 const btn = e.target.classList.contains('choice-btn') ? e.target : e.target.closest('.choice-btn');
@@ -496,6 +462,28 @@
                 }
             });
         });
+
+        // 배점 변경 시 실시간 총점 업데이트
+        document.querySelectorAll('.score-input').forEach(function(input) {
+            input.addEventListener('input', function() {
+                updateTotalScore();
+            });
+        });
+
+        // 총점 업데이트 함수
+        function updateTotalScore() {
+            const scoreInputs = document.querySelectorAll('.score-input');
+            let total = 0;
+            scoreInputs.forEach(input => {
+                const score = parseFloat(input.value) || 0;
+                total += score;
+            });
+            
+            const totalScoreElement = document.getElementById('currentTotalScore');
+            if (totalScoreElement) {
+                totalScoreElement.textContent = total.toFixed(1);
+            }
+        }
 
         // 기본 배점 변경 버튼
         const defaultScoreBtn = document.querySelector('.control-group button.btn-warning');
@@ -545,6 +533,7 @@
                 }
                 const defaultScore = (totalScore / questionCount).toFixed(1);
                 scoreInput.value = defaultScore;
+                updateTotalScore(); // 총점 업데이트
                 // 시각적 피드백
                 scoreInput.style.backgroundColor = '#d4edda';
                 scoreInput.style.borderColor = '#28a745';
@@ -554,6 +543,9 @@
                 }, 1000);
             });
         });
+
+        // 초기 총점 계산
+        updateTotalScore();
     });
     </script>
 </body>
