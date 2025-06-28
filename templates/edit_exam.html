@@ -643,8 +643,8 @@
         // AJAX 번호 변경 스크립트
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.number-input').forEach(function(input) {
-                // change 이벤트 (값 변경 시)
-                input.addEventListener('change', function() {
+                // input 이벤트 (값 변경 시 즉시)
+                input.addEventListener('input', function() {
                     const qid = this.dataset.qid;
                     const examId = this.dataset.examId;
                     const newNumber = this.value;
@@ -672,12 +672,28 @@
                     });
                 });
                 
-                // keydown 이벤트 (엔터 방지)
+                // 모든 키 이벤트 차단
                 input.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') {
                         e.preventDefault();
                         e.stopPropagation();
-                        this.blur(); // 포커스 아웃하여 change 이벤트 발생
+                        return false;
+                    }
+                });
+                
+                input.addEventListener('keyup', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    }
+                });
+                
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
                     }
                 });
             });
