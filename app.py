@@ -134,6 +134,7 @@ def admin_dashboard():
             exam_averages.append(sum(scores) / len(scores))
             exam_maxes.append(max(scores))
     return render_template('admin_dashboard.html',
+                           exams=exams,
                            exam_labels=exam_labels,
                            exam_averages=exam_averages,
                            exam_maxes=exam_maxes)
@@ -255,11 +256,13 @@ def edit_exam(exam_id):
         
         # 문항 수가 변경된 경우 처리
         if submitted_count > existing_count:
-            # 새 문항 추가
+            # 새 문항 추가 - 현재 가장 큰 번호부터 연속으로 추가
+            current_max_number = max([q.question_number for q in questions]) if questions else 0
             for i in range(existing_count + 1, submitted_count + 1):
+                new_question_number = current_max_number + (i - existing_count)
                 new_question = Question(
                     exam_id=exam_id,
-                    question_number=i,
+                    question_number=new_question_number,
                     choice1='보기 1',
                     choice2='보기 2', 
                     choice3='보기 3',
@@ -269,7 +272,7 @@ def edit_exam(exam_id):
                     score=0
                 )
                 db.session.add(new_question)
-                print(f"새 문항 추가: {i}번")
+                print(f"새 문항 추가: {new_question_number}번")
         
         elif submitted_count < existing_count:
             # 문항 삭제 (마지막 문항부터 삭제)
@@ -277,6 +280,16 @@ def edit_exam(exam_id):
             for question in questions_to_delete:
                 db.session.delete(question)
                 print(f"문항 삭제: {question.question_number}번")
+        
+        # 먼저 새로 추가된 문항들을 커밋하여 ID를 생성
+        try:
+            db.session.commit()
+        except Exception as e:
+            print(f"새 문항 추가 커밋 오류: {e}")
+            db.session.rollback()
+            
+        # 업데이트된 문항 목록 다시 가져오기 (ID 순서로 정렬하여 생성 순서 유지)
+        updated_questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.id).all()
         
         # 문항 데이터 업데이트
         total_score = 0
@@ -286,18 +299,21 @@ def edit_exam(exam_id):
             score_str = request.form.get(f'score_{i}', '0')
             score = float(score_str) if score_str.strip() else 0.0
             
-            # 기존 문항 찾기 또는 새 문항 생성
-            if i <= existing_count:
-                question = questions[i-1]
-            else:
-                question = Question.query.filter_by(exam_id=exam_id, question_number=i).first()
+            # 폼에서 제출된 번호 가져오기
+            number_str = request.form.get(f'number_{i}', str(i))
+            question_number = int(number_str) if number_str.strip().isdigit() else i
             
-            if question:
+            # 문항 찾기 (인덱스 기반으로)
+            if i <= len(updated_questions):
+                question = updated_questions[i-1]
+                
                 # 기존 문항 업데이트
                 if question.answer != answer:
                     print(f"문항 {question.question_number} 정답 변경: {question.answer} -> {answer}")
                 if question.score != score:
                     print(f"문항 {question.question_number} 배점 변경: {question.score} -> {score}")
+                if question.question_number != question_number:
+                    print(f"문항 {question.id} 번호 변경: {question.question_number} -> {question_number}")
                 
                 question.choice1 = request.form.get(f'choice1_{i}', '')
                 question.choice2 = request.form.get(f'choice2_{i}', '')
@@ -306,7 +322,11 @@ def edit_exam(exam_id):
                 question.choice5 = request.form.get(f'choice5_{i}', '')
                 question.answer = answer
                 question.score = score
+                question.question_number = question_number
                 total_score += score
+                print(f"문항 {i} 업데이트 완료: 번호={question_number}, 정답={answer}, 배점={score}")
+            else:
+                print(f"경고: 문항 인덱스 {i}가 범위를 벗어남 (총 {len(updated_questions)}개 문항)")
         
         # 총점 업데이트
         exam.total_score = total_score
@@ -571,6 +591,10 @@ def update_question_number():
     if not qid or not new_number or not exam_id:
         return jsonify({'error': '필수 파라미터가 누락되었습니다.'}), 400
     
+    # 새로 추가된 문항인지 확인 (qid가 "new_" 형태인 경우)
+    if str(qid).startswith('new_'):
+        return jsonify({'error': '새로 추가된 문항은 저장 후 번호를 변경할 수 있습니다.'}), 400
+    
     question = db.session.get(Question, qid)
     if not question or question.exam_id != int(exam_id):
         return jsonify({'error': '질문을 찾을 수 없습니다.'}), 404
@@ -830,6 +854,66 @@ def analyze_results():
     # GET 요청 시 시험 목록 제공
     exams = Exam.query.all()
     return render_template('analyze_results.html', exams=exams)
+
+@app.route('/delete_exam/<int:exam_id>', methods=['POST'])
+def delete_exam(exam_id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+    
+    exam = Exam.query.get_or_404(exam_id)
+    
+    try:
+        # 관련된 모든 데이터 삭제 (CASCADE)
+        # 1. 시험 결과 삭제
+        Result.query.filter_by(exam_id=exam_id).delete()
+        
+        # 2. 문항 삭제
+        Question.query.filter_by(exam_id=exam_id).delete()
+        
+        # 3. 시험 삭제
+        db.session.delete(exam)
+        
+        db.session.commit()
+        flash('시험이 성공적으로 삭제되었습니다.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash('시험 삭제 중 오류가 발생했습니다.', 'error')
+        print(f"시험 삭제 오류: {e}")
+    
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/delete_exams_bulk', methods=['POST'])
+def delete_exams_bulk():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+    
+    exam_ids = request.form.getlist('exam_ids')
+    
+    if not exam_ids:
+        flash('삭제할 시험을 선택해주세요.', 'warning')
+        return redirect(url_for('admin_dashboard'))
+    
+    deleted_count = 0
+    try:
+        for exam_id in exam_ids:
+            exam = Exam.query.get(exam_id)
+            if exam:
+                # 관련된 모든 데이터 삭제
+                Result.query.filter_by(exam_id=exam_id).delete()
+                Question.query.filter_by(exam_id=exam_id).delete()
+                db.session.delete(exam)
+                deleted_count += 1
+        
+        db.session.commit()
+        flash(f'{deleted_count}개의 시험이 성공적으로 삭제되었습니다.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash('시험 삭제 중 오류가 발생했습니다.', 'error')
+        print(f"일괄 삭제 오류: {e}")
+    
+    return redirect(url_for('admin_dashboard'))
 
 # ✅ DB 생성 + 서버 실행
 if __name__ == '__main__':

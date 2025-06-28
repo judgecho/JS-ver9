@@ -83,6 +83,91 @@
           </div>
         </div>
         
+        <h2>📚 시험 목록</h2>
+        <div class="exam-list">
+          {% if exams %}
+            <form method="POST" action="{{ url_for('delete_exams_bulk') }}" id="bulkDeleteForm">
+              <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <button type="button" onclick="toggleAllCheckboxes()" 
+                        style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                  전체 선택/해제
+                </button>
+                <button type="submit" onclick="return confirmBulkDelete()" 
+                        style="background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                  선택된 시험 삭제
+                </button>
+                <span id="selectedCount" style="color: #666; font-size: 14px;">선택된 시험: 0개</span>
+              </div>
+              
+              <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                <thead>
+                  <tr style="background: #f8f9fa;">
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: center; width: 50px;">
+                      <input type="checkbox" id="selectAll" onchange="toggleAllCheckboxes()">
+                    </th>
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">시험명</th>
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: center;">문항 수</th>
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: center;">응시자 수</th>
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: center;">평균 점수</th>
+                    <th style="padding: 12px; border: 1px solid #ddd; text-align: center;">작업</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for exam in exams %}
+                    <tr style="border-bottom: 1px solid #ddd;">
+                      <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">
+                        <input type="checkbox" name="exam_ids" value="{{ exam.id }}" class="exam-checkbox" onchange="updateSelectedCount()">
+                      </td>
+                      <td style="padding: 12px; border: 1px solid #ddd;">
+                        <strong>{{ exam.title }}</strong>
+                        {% if exam.category %}
+                          <br><small style="color: #666;">{{ exam.category }}</small>
+                        {% endif %}
+                      </td>
+                      <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">
+                        {{ exam.questions|length if exam.questions else 0 }}개
+                      </td>
+                      <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">
+                        {{ exam.results|length if exam.results else 0 }}명
+                      </td>
+                      <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">
+                        {% if exam.results %}
+                          {% set scores = exam.results|map(attribute='score')|list %}
+                          {{ "%.1f"|format(scores|sum / scores|length) }}점
+                        {% else %}
+                          -
+                        {% endif %}
+                      </td>
+                      <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">
+                        <div style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
+                          <a href="{{ url_for('edit_exam', exam_id=exam.id) }}" 
+                             style="background: #007bff; color: white; padding: 5px 10px; border-radius: 3px; text-decoration: none; font-size: 12px;">
+                            편집
+                          </a>
+                          <a href="{{ url_for('analyze_results') }}?exam_id={{ exam.id }}" 
+                             style="background: #28a745; color: white; padding: 5px 10px; border-radius: 3px; text-decoration: none; font-size: 12px;">
+                            분석
+                          </a>
+                          <form method="POST" action="{{ url_for('delete_exam', exam_id=exam.id) }}" 
+                                style="display: inline;" 
+                                onsubmit="return confirm('정말로 이 시험을 삭제하시겠습니까?\n\n⚠️ 주의: 시험과 관련된 모든 데이터(문항, 결과 등)가 영구적으로 삭제됩니다.')">
+                            <button type="submit" 
+                                    style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; font-size: 12px; cursor: pointer;">
+                              삭제
+                            </button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </form>
+          {% else %}
+            <p style="text-align: center; color: #666; padding: 20px;">등록된 시험이 없습니다.</p>
+          {% endif %}
+        </div>
+        
         <h2>시험별 통계</h2>
         <div style="position: relative; height: 400px;">
             <canvas id="examChart" width="600" height="300"></canvas>
@@ -117,6 +202,64 @@
                 }
             }
         });
+    </script>
+    
+    <script>
+        // 전체 선택/해제 토글
+        function toggleAllCheckboxes() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const examCheckboxes = document.querySelectorAll('.exam-checkbox');
+            
+            examCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+            
+            updateSelectedCount();
+        }
+        
+        // 선택된 개수 업데이트
+        function updateSelectedCount() {
+            const examCheckboxes = document.querySelectorAll('.exam-checkbox');
+            const selectedCount = document.getElementById('selectedCount');
+            const selectAllCheckbox = document.getElementById('selectAll');
+            
+            let checkedCount = 0;
+            examCheckboxes.forEach(checkbox => {
+                if (checkbox.checked) checkedCount++;
+            });
+            
+            selectedCount.textContent = `선택된 시험: ${checkedCount}개`;
+            
+            // 전체 선택 체크박스 상태 업데이트
+            if (checkedCount === 0) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            } else if (checkedCount === examCheckboxes.length) {
+                selectAllCheckbox.checked = true;
+                selectAllCheckbox.indeterminate = false;
+            } else {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = true;
+            }
+        }
+        
+        // 일괄 삭제 확인
+        function confirmBulkDelete() {
+            const examCheckboxes = document.querySelectorAll('.exam-checkbox:checked');
+            
+            if (examCheckboxes.length === 0) {
+                alert('삭제할 시험을 선택해주세요.');
+                return false;
+            }
+            
+            const count = examCheckboxes.length;
+            const examNames = Array.from(examCheckboxes).map(checkbox => {
+                const row = checkbox.closest('tr');
+                return row.querySelector('td:nth-child(2) strong').textContent;
+            }).join('\n- ');
+            
+            return confirm(`정말로 다음 ${count}개의 시험을 삭제하시겠습니까?\n\n- ${examNames}\n\n⚠️ 주의: 시험과 관련된 모든 데이터(문항, 결과 등)가 영구적으로 삭제됩니다.`);
+        }
     </script>
 </body>
 </html>
