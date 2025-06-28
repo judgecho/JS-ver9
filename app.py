@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, make_response, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, flash, make_response, send_file, jsonify
 from models import db, User, Exam, Question, Result, Log
 from werkzeug.utils import secure_filename
 from openpyxl import load_workbook
@@ -258,6 +258,9 @@ def edit_exam(exam_id):
             
             # 번호 변경 후 questions 리스트 다시 로드
             questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
+            
+            # 번호 변경 완료 메시지 추가
+            flash('문항 번호가 성공적으로 변경되었습니다.', 'success')
         else:
             print("변경할 번호가 없습니다.")
         
@@ -572,6 +575,23 @@ def create_exam():
 @app.route('/download_sample_exam')
 def download_sample_exam():
     return send_file('sample_exam.xlsx', as_attachment=True)
+
+@app.route('/api/update_question_number', methods=['POST'])
+def update_question_number():
+    qid = int(request.form['qid'])
+    new_number = int(request.form['new_number'])
+    exam_id = int(request.form['exam_id'])
+    q = Question.query.get(qid)
+    if q:
+        q.question_number = new_number
+        db.session.commit()
+        # 번호 충돌 방지: 같은 시험 내에서 중복 번호가 있으면 정렬해서 1부터 재부여
+        questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
+        for idx, q in enumerate(questions, 1):
+            q.question_number = idx
+        db.session.commit()
+        return jsonify({'success': True})
+    return jsonify({'success': False}), 400
 
 # ✅ DB 생성 + 서버 실행
 if __name__ == '__main__':
