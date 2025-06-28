@@ -230,119 +230,69 @@ def edit_exam(exam_id):
     questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
     
     if request.method == 'POST':
-        # 문항 번호 변경 처리 (자동 적용)
         print("=== 번호 변경 시작 ===")
-        
-        # 모든 문항의 새 번호를 수집
         new_numbers = {}
         for q in questions:
             new_number = request.form.get(f'number_{q.id}')
             if new_number and new_number.isdigit():
                 new_numbers[q.id] = int(new_number)
                 print(f"문항 {q.id}: 새 번호 {new_number}")
-        
         if new_numbers:
-            # 번호를 오름차순으로 정렬하여 순차적으로 할당
             sorted_questions = sorted(new_numbers.items(), key=lambda x: x[1])
-            
-            # 1부터 시작하여 순차적으로 번호 할당
             for i, (q_id, _) in enumerate(sorted_questions, 1):
                 q = Question.query.get(q_id)
                 if q:
                     old_number = q.question_number
                     q.question_number = i
                     print(f"문항 {q_id} 번호 변경: {old_number} -> {i}")
-            
             db.session.commit()
             print("번호 변경 완료 - 순차적 넘버링 적용")
-            
-            # 번호 변경 후 questions 리스트 다시 로드
             questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
-            
-            # 번호 변경 완료 메시지 추가
             flash('문항 번호가 성공적으로 변경되었습니다.', 'success')
         else:
             print("변경할 번호가 없습니다.")
-        
-        # 수동 배점 변경 감지 및 자동 조정
-        manual_scores = {}
-        total_manual_score = 0
-        
+
+        # 문항 내용 및 배점 업데이트
         for q in questions:
-            # 문항 내용 업데이트
             q.choice1 = request.form.get(f'choice1_{q.id}', '')
             q.choice2 = request.form.get(f'choice2_{q.id}', '')
             q.choice3 = request.form.get(f'choice3_{q.id}', '')
             q.choice4 = request.form.get(f'choice4_{q.id}', '')
             q.choice5 = request.form.get(f'choice5_{q.id}', '')
             q.answer = request.form.get(f'answer_{q.id}', '')
-            
-            # 배점 변경 감지
             score_key = f'score_{q.id}'
             if score_key in request.form:
-                new_score = float(request.form[score_key])
-                if new_score != q.score:  # 배점이 변경된 경우
-                    manual_scores[q.id] = new_score
-                    total_manual_score += new_score
-                    print(f"새로운 수동 배점 감지: 문항 {q.question_number} = {new_score}점 (기존: {q.score}점)")
-                q.score = new_score
-        
-        if manual_scores:
-            print(f"수동 배점 변경 감지: {manual_scores}")
-            print(f"수동 배점 총합: {total_manual_score}")
-            
-            # 수동 배점이 총점을 초과하는 경우에도 나머지 문항을 0점으로 설정하지 않음
-            # 단순히 현재 상태를 유지하고 총점만 표시
-            remaining_questions = [q for q in questions if q.id not in manual_scores]
-            if remaining_questions:
-                remaining_score = exam.total_score - total_manual_score
-                if remaining_score > 0:
-                    score_per_remaining = remaining_score / len(remaining_questions)
-                    
-                    print(f"나머지 문항 {len(remaining_questions)}개, 문항당 {score_per_remaining:.1f}점")
-                    
-                    # 배점 보정 (소수점 오차 해결)
-                    correction = remaining_score - (score_per_remaining * len(remaining_questions))
-                    if abs(correction) > 0.01:
-                        print(f"배점 보정: {correction}점 추가")
-                        score_per_remaining += correction / len(remaining_questions)
-                    
-                    for q in remaining_questions:
-                        q.score = round(score_per_remaining, 1)
-                else:
-                    # 나머지 점수가 부족한 경우 나머지 문항들을 0점으로 설정
-                    print(f"나머지 점수가 부족하여 나머지 문항들을 0점으로 설정")
-                    for q in remaining_questions:
-                        q.score = 0
-            
-            print(f"최종 배점 조정 완료: 총점 {sum(q.score for q in questions):.1f}점")
-        
-        # 시험 정보 업데이트
+                try:
+                    q.score = float(request.form[score_key])
+                except Exception:
+                    q.score = 0
+
+        # 기본 배점 일괄 변경 요청이 있을 때만 적용
+        if 'update_default_score' in request.form:
+            try:
+                new_default = float(request.form['update_default_score'])
+                for q in questions:
+                    q.score = round(new_default, 1)
+                exam.total_score = round(new_default * len(questions), 1)
+                print(f"기본 배점 일괄 변경: {new_default}점, 총점 {exam.total_score}")
+            except Exception as e:
+                print(f"기본 배점 일괄 변경 오류: {e}")
+        else:
+            # 총점은 항상 현재 문항 배점의 합으로 자동 갱신
+            exam.total_score = round(sum(q.score for q in questions), 1)
+            print(f"총점 자동 갱신: {exam.total_score}")
+
         exam.title = request.form['title']
         exam.category = request.form.get('category', '기타')
-        
-        # 기본 배점 일괄 변경 시 총점도 자동 갱신
-        if 'new_total_score' in request.form:
-            try:
-                new_total = float(request.form['new_total_score'])
-                exam.total_score = new_total
-                print(f"총점이 기본 배점 일괄 변경에 따라 {new_total}점으로 자동 갱신됨")
-            except Exception as e:
-                print(f"총점 자동 갱신 오류: {e}")
-        
-        # 문항 수 변경 처리
+
+        # 문항 수 변경 처리 (기존 로직 유지)
         if 'update_question_count' in request.form:
             new_question_count = int(request.form.get('question_count', len(questions)))
             current_question_count = len(questions)
-            
             if new_question_count != current_question_count:
                 print(f"문항 수 변경: {current_question_count}개 → {new_question_count}개")
-                
-                # 기존 문항들 삭제
                 Question.query.filter_by(exam_id=exam_id).delete()
-                
-                # 새로운 문항들 생성
-                default_score = exam.total_score / new_question_count
+                default_score = exam.total_score / new_question_count if new_question_count > 0 else 0
                 for i in range(1, new_question_count + 1):
                     q = Question(
                         exam_id=exam.id,
@@ -356,17 +306,11 @@ def edit_exam(exam_id):
                         score=round(default_score, 1)
                     )
                     db.session.add(q)
-                
                 print(f"새로운 문항 {new_question_count}개 생성 완료, 문항당 {default_score:.1f}점")
-                
-                # questions 리스트 업데이트
                 questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
-        
         db.session.commit()
-        
         flash('시험이 성공적으로 업데이트되었습니다.', 'success')
         return redirect(url_for('edit_exam', exam_id=exam_id))
-    
     return render_template(
         'edit_exam.html',
         exam=exam,
@@ -585,23 +529,29 @@ def update_question_number():
         
         print(f"AJAX 번호 변경 요청: qid={qid}, new_number={new_number}, exam_id={exam_id}")
         
-        q = Question.query.get(qid)
-        if q:
-            old_number = q.question_number
-            q.question_number = new_number
-            db.session.commit()
-            
-            # 번호 충돌 방지: 같은 시험 내에서 중복 번호가 있으면 정렬해서 1부터 재부여
-            questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
-            for idx, q in enumerate(questions, 1):
-                q.question_number = idx
-            db.session.commit()
-            
-            print(f"AJAX 번호 변경 성공: {old_number} -> {new_number}")
-            return jsonify({'success': True, 'message': '번호 변경 완료'})
-        else:
+        # 모든 문항을 번호순으로 가져옴
+        questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
+        qids = [q.id for q in questions]
+        
+        # 변경 대상 문항의 인덱스 찾기
+        idx = None
+        for i, q in enumerate(questions):
+            if q.id == qid:
+                idx = i
+                break
+        if idx is None:
             print(f"AJAX 번호 변경 실패: 문항 {qid}를 찾을 수 없음")
             return jsonify({'success': False, 'message': '문항을 찾을 수 없습니다.'}), 400
+        
+        # 앞쪽 문항은 그대로, 선택 문항부터 번호 재할당
+        # 예: 1,2,3,4,5에서 3번을 11로 바꾸면 1,2,11,12,13
+        for i in range(len(questions)):
+            if i < idx:
+                continue  # 앞쪽은 그대로
+            questions[i].question_number = new_number + (i - idx)
+        db.session.commit()
+        print(f"AJAX 번호 변경 성공: idx={idx}, 새 번호 {new_number}부터 연속 부여 완료")
+        return jsonify({'success': True, 'message': '번호 변경 완료'})
     except Exception as e:
         print(f"AJAX 번호 변경 오류: {str(e)}")
         return jsonify({'success': False, 'message': f'오류가 발생했습니다: {str(e)}'}), 500
