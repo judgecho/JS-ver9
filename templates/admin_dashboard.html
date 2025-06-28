@@ -24,11 +24,42 @@
       }
       .top-menu a:hover { background: #0056b3; }
       
+      .ai-menu {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 10px;
+      }
+      .ai-menu h3 {
+        color: white;
+        margin-bottom: 15px;
+        text-align: center;
+      }
+      .ai-menu .ai-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+      }
+      .ai-menu a {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 25px;
+        text-decoration: none;
+        font-weight: bold;
+        transition: all 0.3s ease;
+      }
+      .ai-menu a:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+      }
+      
       @media (max-width: 768px) {
-        .top-menu {
+        .top-menu, .ai-menu .ai-links {
           flex-direction: column;
         }
-        .top-menu a {
+        .top-menu a, .ai-menu a {
           text-align: center;
         }
       }
@@ -42,6 +73,16 @@
           <a href="/create_exam" style="background:#28a745;">시험 생성</a>
           <a href="/upload_exam" style="background:#ffc107; color:#222;">시험 업로드</a>
         </div>
+        
+        <div class="ai-menu">
+          <h3>🤖 AI 기능</h3>
+          <div class="ai-links">
+            <a href="/chatgpt/chat">💬 ChatGPT 채팅</a>
+            <a href="/chatgpt/generate_questions">📝 AI 문제 생성</a>
+            <a href="/chatgpt/analyze_results">📊 AI 결과 분석</a>
+          </div>
+        </div>
+        
         <h2>시험별 통계</h2>
         <div style="position: relative; height: 400px;">
             <canvas id="examChart" width="600" height="300"></canvas>

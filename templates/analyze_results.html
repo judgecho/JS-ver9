@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 결과 분석</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .form-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .form-group button {
+            background: #17a2b8;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .form-group button:hover {
+            background: #138496;
+        }
+        .analysis-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-label {
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        .score-distribution {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .score-bar {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        .score-range {
+            width: 80px;
+            font-weight: bold;
+        }
+        .score-bar-container {
+            flex: 1;
+            background: #e9ecef;
+            height: 20px;
+            border-radius: 10px;
+            margin: 0 10px;
+            overflow: hidden;
+        }
+        .score-bar-fill {
+            height: 100%;
+            background: #007bff;
+            transition: width 0.3s ease;
+        }
+        .score-count {
+            width: 50px;
+            text-align: right;
+        }
+        .ai-analysis {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 5px;
+            border-left: 4px solid #2196f3;
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #007bff;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{{ url_for('admin_dashboard') }}" class="back-link">← 관리자 대시보드로 돌아가기</a>
+        
+        <div class="form-section">
+            <h1>📊 AI 결과 분석</h1>
+            <form method="POST">
+                <div class="form-group">
+                    <label for="exam_id">분석할 시험 선택:</label>
+                    <select name="exam_id" id="exam_id" required>
+                        <option value="">시험을 선택하세요</option>
+                        {% for exam in exams %}
+                        <option value="{{ exam.id }}">{{ exam.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit">결과 분석하기</button>
+                </div>
+            </form>
+        </div>
+        
+        {% if analysis_data %}
+        <div class="analysis-section">
+            <h2>{{ analysis_data.exam_title }} - 결과 분석</h2>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">{{ analysis_data.total_students }}</div>
+                    <div class="stat-label">응시자 수</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ analysis_data.average_score }}</div>
+                    <div class="stat-label">평균 점수</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ analysis_data.max_score }}</div>
+                    <div class="stat-label">최고 점수</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ analysis_data.min_score }}</div>
+                    <div class="stat-label">최저 점수</div>
+                </div>
+            </div>
+            
+            <div class="score-distribution">
+                <h3>점수 분포</h3>
+                <div class="score-bar">
+                    <div class="score-range">90-100점</div>
+                    <div class="score-bar-container">
+                        <div class="score-bar-fill" style="width: {{ (analysis_data.score_distribution['90-100'] / analysis_data.total_students * 100) | round(1) }}%"></div>
+                    </div>
+                    <div class="score-count">{{ analysis_data.score_distribution['90-100'] }}명</div>
+                </div>
+                <div class="score-bar">
+                    <div class="score-range">80-89점</div>
+                    <div class="score-bar-container">
+                        <div class="score-bar-fill" style="width: {{ (analysis_data.score_distribution['80-89'] / analysis_data.total_students * 100) | round(1) }}%"></div>
+                    </div>
+                    <div class="score-count">{{ analysis_data.score_distribution['80-89'] }}명</div>
+                </div>
+                <div class="score-bar">
+                    <div class="score-range">70-79점</div>
+                    <div class="score-bar-container">
+                        <div class="score-bar-fill" style="width: {{ (analysis_data.score_distribution['70-79'] / analysis_data.total_students * 100) | round(1) }}%"></div>
+                    </div>
+                    <div class="score-count">{{ analysis_data.score_distribution['70-79'] }}명</div>
+                </div>
+                <div class="score-bar">
+                    <div class="score-range">60-69점</div>
+                    <div class="score-bar-container">
+                        <div class="score-bar-fill" style="width: {{ (analysis_data.score_distribution['60-69'] / analysis_data.total_students * 100) | round(1) }}%"></div>
+                    </div>
+                    <div class="score-count">{{ analysis_data.score_distribution['60-69'] }}명</div>
+                </div>
+                <div class="score-bar">
+                    <div class="score-range">0-59점</div>
+                    <div class="score-bar-container">
+                        <div class="score-bar-fill" style="width: {{ (analysis_data.score_distribution['0-59'] / analysis_data.total_students * 100) | round(1) }}%"></div>
+                    </div>
+                    <div class="score-count">{{ analysis_data.score_distribution['0-59'] }}명</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if ai_analysis %}
+        <div class="analysis-section">
+            <h2>🤖 AI 분석 결과</h2>
+            <div class="ai-analysis">{{ ai_analysis }}</div>
+        </div>
+        {% endif %}
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+</body>
+</html> 

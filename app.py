@@ -6,11 +6,19 @@ from weasyprint import HTML
 import os
 import csv
 import json
+import openai
+from dotenv import load_dotenv
+
+# 환경 변수 로드
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key"
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///C:/Users/JS/Downloads/JS/instance/exam.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# OpenAI API 설정
+openai.api_key = os.getenv('OPENAI_API_KEY')
 
 db.init_app(app)
 
@@ -93,9 +101,9 @@ def exam_form(exam_id):
 
 @app.route('/grade_result/<int:result_id>')
 def grade_result(result_id):
-    result = Result.query.get(result_id)
-    student = User.query.get(result.student_id)
-    exam = Exam.query.get(result.exam_id)
+    result = db.session.get(Result, result_id)
+    student = db.session.get(User, result.student_id)
+    exam = db.session.get(Exam, result.exam_id)
     questions = Question.query.filter_by(exam_id=exam.id).order_by(Question.question_number).all()
     student_answers = json.loads(result.answers) if result.answers else {}
     question_results = []
@@ -179,7 +187,7 @@ def upload_exam():
 def my_stats():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    user = User.query.get(session['user_id'])
+    user = db.session.get(User, session['user_id'])
     results = Result.query.filter_by(user_id=user.id).order_by(Result.timestamp).all()
     labels = [f"시험 {r.exam_id}" for r in results]
     scores = [r.score for r in results]
@@ -195,8 +203,8 @@ def export_stats():
     output.append(['시험 제목', '학생 ID', '닉네임', '반', '점수', '응시 시간'])
 
     for r in results:
-        user = User.query.get(r.user_id)
-        exam = Exam.query.get(r.exam_id)
+        user = db.session.get(User, r.user_id)
+        exam = db.session.get(Exam, r.exam_id)
         output.append([
             exam.title,
             user.username,
@@ -230,74 +238,115 @@ def edit_exam(exam_id):
     questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
     
     if request.method == 'POST':
-        print("=== 폼 제출 시작 ===")
+        print("=== 시험 편집 폼 제출 ===")
         
-        # 번호 변경이 있는지 확인
-        has_number_changes = False
-        new_numbers = {}
-        for q in questions:
-            new_number = request.form.get(f'number_{q.id}')
-            if new_number and new_number.isdigit():
-                new_number_int = int(new_number)
-                if new_number_int != q.question_number:
-                    has_number_changes = True
-                    new_numbers[q.id] = new_number_int
+        # 기존 문항 수
+        existing_count = len(questions)
         
-        # 번호 변경이 있을 때만 순차적 넘버링 적용
-        if has_number_changes:
-            print("번호 변경 감지 - 순차적 넘버링 적용")
-            # 번호 변경 적용
-            for q in questions:
-                if q.id in new_numbers:
-                    print(f"문항 {q.id} 번호 변경: {q.question_number} -> {new_numbers[q.id]}")
-                    q.question_number = new_numbers[q.id]
-            # 번호를 오름차순으로 정렬 후 1부터 연속 부여
-            questions_sorted = sorted(questions, key=lambda x: x.question_number)
-            for idx, q in enumerate(questions_sorted, 1):
-                q.question_number = idx
-            print("번호 변경 완료 - 순차적 넘버링 적용")
-        else:
-            print("번호 변경 없음 - 기존 번호 유지")
-
-        # 문항 내용 및 배점 업데이트
-        for q in questions:
-            # 정답 업데이트
-            answer = request.form.get(f'answer_{q.id}', '').strip()
-            if answer != q.answer:
-                print(f"문항 {q.id} 정답 변경: {q.answer} -> {answer}")
-                q.answer = answer
+        # 폼에서 전송된 문항 수 확인 (숫자 입력란들 개수)
+        submitted_questions = []
+        i = 1
+        while f'number_{i}' in request.form:
+            submitted_questions.append(i)
+            i += 1
+        
+        submitted_count = len(submitted_questions)
+        print(f"기존 문항 수: {existing_count}, 제출된 문항 수: {submitted_count}")
+        
+        # 문항 수가 변경된 경우 처리
+        if submitted_count > existing_count:
+            # 새 문항 추가
+            for i in range(existing_count + 1, submitted_count + 1):
+                new_question = Question(
+                    exam_id=exam_id,
+                    question_number=i,
+                    choice1='보기 1',
+                    choice2='보기 2', 
+                    choice3='보기 3',
+                    choice4='보기 4',
+                    choice5='보기 5',
+                    answer='',
+                    score=0
+                )
+                db.session.add(new_question)
+                print(f"새 문항 추가: {i}번")
+        
+        elif submitted_count < existing_count:
+            # 문항 삭제 (마지막 문항부터 삭제)
+            questions_to_delete = questions[submitted_count:]
+            for question in questions_to_delete:
+                db.session.delete(question)
+                print(f"문항 삭제: {question.question_number}번")
+        
+        # 문항 데이터 업데이트
+        total_score = 0
+        for i in submitted_questions:
+            question_text = request.form.get(f'question_{i}', '')
+            answer = request.form.get(f'answer_{i}', '')
+            score_str = request.form.get(f'score_{i}', '0')
+            score = float(score_str) if score_str.strip() else 0.0
             
-            # 배점 업데이트
-            score = request.form.get(f'score_{q.id}')
-            if score and score.replace('.', '').isdigit():
-                new_score = float(score)
-                if new_score != q.score:
-                    print(f"문항 {q.id} 배점 변경: {q.score} -> {new_score}")
-                    q.score = round(new_score, 1)
+            # 기존 문항 찾기 또는 새 문항 생성
+            if i <= existing_count:
+                question = questions[i-1]
+            else:
+                question = Question.query.filter_by(exam_id=exam_id, question_number=i).first()
+            
+            if question:
+                # 기존 문항 업데이트
+                if question.answer != answer:
+                    print(f"문항 {question.question_number} 정답 변경: {question.answer} -> {answer}")
+                if question.score != score:
+                    print(f"문항 {question.question_number} 배점 변경: {question.score} -> {score}")
+                
+                question.choice1 = request.form.get(f'choice1_{i}', '')
+                question.choice2 = request.form.get(f'choice2_{i}', '')
+                question.choice3 = request.form.get(f'choice3_{i}', '')
+                question.choice4 = request.form.get(f'choice4_{i}', '')
+                question.choice5 = request.form.get(f'choice5_{i}', '')
+                question.answer = answer
+                question.score = score
+                total_score += score
         
-        # 기본 배점 일괄 변경 요청이 있을 때만 적용
-        if 'update_default_score' in request.form:
-            try:
-                new_default = float(request.form['update_default_score'])
-                for q in questions:
-                    q.score = round(new_default, 1)
-                exam.total_score = round(new_default * len(questions), 1)
-                print(f"기본 배점 일괄 변경: {new_default}점, 총점 {exam.total_score}")
-            except Exception as e:
-                print(f"기본 배점 일괄 변경 오류: {e}")
-        else:
-            # 총점은 항상 현재 문항 배점의 합으로 자동 갱신
-            exam.total_score = round(sum(q.score for q in questions), 1)
-            print(f"총점 자동 갱신: {exam.total_score}")
+        # 총점 업데이트
+        exam.total_score = total_score
+        print(f"총점 자동 계산: {total_score}점")
         
-        db.session.commit()
-        flash('시험이 성공적으로 저장되었습니다.', 'success')
+        try:
+            db.session.commit()
+            flash('시험이 성공적으로 저장되었습니다.', 'success')
+            print("시험 편집 저장 완료")
+        except Exception as e:
+            db.session.rollback()
+            print(f"시험 편집 저장 오류: {e}")
+            flash('시험 저장 중 오류가 발생했습니다.', 'error')
+        
         return redirect(url_for('edit_exam', exam_id=exam_id))
+    
+    # GET 요청: 템플릿 렌더링
+    # 문항 데이터를 템플릿에 맞게 가공
+    questions_data = []
+    for q in questions:
+        choices = [
+            {'number': 1, 'text': q.choice1},
+            {'number': 2, 'text': q.choice2},
+            {'number': 3, 'text': q.choice3},
+            {'number': 4, 'text': q.choice4},
+            {'number': 5, 'text': q.choice5}
+        ]
+        questions_data.append({
+            'id': q.id,
+            'number': q.question_number,
+            'text': f"문항 {q.question_number}",
+            'choices': choices,
+            'answer': q.answer,
+            'score': q.score
+        })
+    
     return render_template(
         'edit_exam.html',
         exam=exam,
-        questions=Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all(),
-        default_score_per_question=round(100 / len(questions), 1) if questions else 0
+        questions=questions_data
     )
 
 @app.route('/logs')
@@ -467,8 +516,12 @@ def create_exam():
         # 배점 설정 방식에 따른 배점 계산
         if scoring_method == 'manual':
             # 수동 설정: 기본 배점과 총점 사용
-            default_score = float(request.form.get('default_score', 0))
-            total_score = float(request.form.get('total_score', 0))
+            default_score_str = request.form.get('default_score', '0')
+            total_score_str = request.form.get('total_score', '0')
+            
+            # 빈 문자열 체크 후 안전한 형변환
+            default_score = float(default_score_str) if default_score_str.strip() else 0.0
+            total_score = float(total_score_str) if total_score_str.strip() else 0.0
             
             if default_score > 0:
                 # 기본 배점으로 모든 문항 설정
@@ -486,7 +539,8 @@ def create_exam():
                 print(f"기본값으로 배점 설정: 문항 {question_count}개, 문항당 {default_score}점, 총점 {total_score}점")
         else:
             # 자동 균등 분배: 사용자가 설정한 총점 사용
-            total_score = float(request.form.get('auto_total_score', 100))
+            auto_total_score_str = request.form.get('auto_total_score', '100')
+            total_score = float(auto_total_score_str) if auto_total_score_str.strip() else 100.0
             score_per_question = total_score / question_count
             for q in Question.query.filter_by(exam_id=exam.id).all():
                 q.score = round(score_per_question, 1)
@@ -504,39 +558,283 @@ def download_sample_exam():
 
 @app.route('/api/update_question_number', methods=['POST'])
 def update_question_number():
-    try:
-        qid = int(request.form['qid'])
-        new_number = int(request.form['new_number'])
-        exam_id = int(request.form['exam_id'])
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return jsonify({'error': '권한이 없습니다.'}), 403
+    
+    data = request.get_json()
+    qid = data.get('qid')  # 실제 질문 ID
+    new_number = data.get('new_number')
+    exam_id = data.get('exam_id')
+    
+    print(f"번호 변경 요청: qid={qid}, new_number={new_number}, exam_id={exam_id}")
+    
+    if not qid or not new_number or not exam_id:
+        return jsonify({'error': '필수 파라미터가 누락되었습니다.'}), 400
+    
+    # 실제 질문 ID로 질문 찾기
+    question = db.session.get(Question, qid)
+    
+    if question and question.exam_id == int(exam_id):
+        old_number = question.question_number
+        target_number = int(new_number)
         
-        print(f"AJAX 번호 변경 요청: qid={qid}, new_number={new_number}, exam_id={exam_id}")
+        # 해당 시험의 모든 질문 가져오기
+        all_questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
+        total_questions = len(all_questions)
         
-        # 모든 문항을 번호순으로 가져옴
-        questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
-        qids = [q.id for q in questions]
+        print(f"총 문항 수: {total_questions}, 요청된 번호: {target_number}")
         
-        # 변경 대상 문항의 인덱스 찾기
-        idx = None
-        for i, q in enumerate(questions):
-            if q.id == qid:
-                idx = i
-                break
-        if idx is None:
-            print(f"AJAX 번호 변경 실패: 문항 {qid}를 찾을 수 없음")
-            return jsonify({'success': False, 'message': '문항을 찾을 수 없습니다.'}), 400
+        # 번호 유효성 검사
+        if target_number < 1 or target_number > total_questions:
+            return jsonify({'error': f'번호는 1부터 {total_questions}까지 입력 가능합니다.'}), 400
         
-        # 앞쪽 문항은 그대로, 선택 문항부터 번호 재할당
-        # 예: 1,2,3,4,5에서 3번을 11로 바꾸면 1,2,11,12,13
-        for i in range(len(questions)):
-            if i < idx:
-                continue  # 앞쪽은 그대로
-            questions[i].question_number = new_number + (i - idx)
-        db.session.commit()
-        print(f"AJAX 번호 변경 성공: idx={idx}, 새 번호 {new_number}부터 연속 부여 완료")
-        return jsonify({'success': True, 'message': '번호 변경 완료'})
-    except Exception as e:
-        print(f"AJAX 번호 변경 오류: {str(e)}")
-        return jsonify({'success': False, 'message': f'오류가 발생했습니다: {str(e)}'}), 500
+        # 번호가 실제로 변경되었는지 확인
+        if old_number == target_number:
+            return jsonify({'success': True, 'message': '번호가 변경되지 않았습니다.'})
+        
+        # 새로운 번호 재정렬 로직
+        try:
+            # 1. 모든 문항을 임시로 9999로 설정 (중복 방지)
+            for q in all_questions:
+                q.question_number = 9999
+            
+            # 2. 대상 문항을 원하는 위치에 배치
+            question.question_number = target_number
+            
+            # 3. 나머지 문항들을 순서대로 배치
+            current_number = 1
+            for q in all_questions:
+                if q.id != question.id:  # 대상 문항 제외
+                    # 변경된 번호보다 작은 위치에 배치
+                    if current_number < target_number:
+                        q.question_number = current_number
+                        current_number += 1
+                    else:
+                        # 변경된 번호 다음부터 배치
+                        q.question_number = current_number + 1
+                        current_number += 1
+            
+            db.session.commit()
+            
+            print(f"번호 변경 성공: 문항 {question.id} 번호 {old_number} -> {target_number}")
+            print("전체 번호 재정렬 완료")
+            
+            # 업데이트된 번호 목록 반환
+            updated_questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
+            updated_numbers = [{'qid': q.id, 'new_number': q.question_number} for q in updated_questions]
+            
+            return jsonify({
+                'success': True, 
+                'message': f'번호가 {old_number}에서 {target_number}로 변경되었습니다.',
+                'updated_numbers': updated_numbers
+            })
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"번호 변경 중 오류 발생: {str(e)}")
+            return jsonify({'error': f'번호 변경 중 오류가 발생했습니다: {str(e)}'}), 500
+    
+    return jsonify({'error': '질문을 찾을 수 없습니다.'}), 404
+
+# ChatGPT API 관련 라우트들
+@app.route('/chatgpt/chat', methods=['GET', 'POST'])
+def chatgpt_chat():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    if request.method == 'POST':
+        user_message = request.form.get('message', '')
+        
+        if not user_message:
+            flash('메시지를 입력해주세요.')
+            return render_template('chatgpt_chat.html')
+        
+        try:
+            # ChatGPT API 호출
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "당신은 친절하고 도움이 되는 AI 어시스턴트입니다. 한국어로 답변해주세요."},
+                    {"role": "user", "content": user_message}
+                ],
+                max_tokens=1000,
+                temperature=0.7
+            )
+            
+            ai_response = response.choices[0].message.content
+            
+            # 로그 저장
+            log = Log(
+                user_id=session['user_id'],
+                action=f"ChatGPT 사용: {user_message[:50]}...",
+                details=f"사용자: {user_message}\nAI: {ai_response}"
+            )
+            db.session.add(log)
+            db.session.commit()
+            
+            return render_template('chatgpt_chat.html', 
+                                 user_message=user_message, 
+                                 ai_response=ai_response)
+        
+        except Exception as e:
+            flash(f'ChatGPT API 호출 중 오류가 발생했습니다: {str(e)}')
+            return render_template('chatgpt_chat.html')
+    
+    return render_template('chatgpt_chat.html')
+
+@app.route('/chatgpt/generate_questions', methods=['GET', 'POST'])
+def generate_questions():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+    
+    if request.method == 'POST':
+        topic = request.form.get('topic', '')
+        num_questions = int(request.form.get('num_questions', 5))
+        difficulty = request.form.get('difficulty', '보통')
+        
+        if not topic:
+            flash('주제를 입력해주세요.')
+            return render_template('generate_questions.html')
+        
+        try:
+            # ChatGPT로 문제 생성 요청
+            prompt = f"""
+            다음 조건에 맞는 객관식 문제 {num_questions}개를 생성해주세요:
+            - 주제: {topic}
+            - 난이도: {difficulty}
+            - 형식: 번호, 보기1, 보기2, 보기3, 보기4, 보기5, 정답번호
+            - JSON 형식으로 응답해주세요
+            
+            예시 형식:
+            [
+                {{
+                    "question_number": 1,
+                    "choice1": "보기1",
+                    "choice2": "보기2", 
+                    "choice3": "보기3",
+                    "choice4": "보기4",
+                    "choice5": "보기5",
+                    "answer": 3
+                }}
+            ]
+            """
+            
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "당신은 교육 전문가입니다. 객관식 문제를 생성해주세요."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=2000,
+                temperature=0.7
+            )
+            
+            ai_response = response.choices[0].message.content
+            
+            # JSON 파싱 시도
+            try:
+                import json
+                questions_data = json.loads(ai_response)
+                return render_template('generate_questions.html', 
+                                     topic=topic,
+                                     questions_data=questions_data,
+                                     ai_response=ai_response)
+            except json.JSONDecodeError:
+                return render_template('generate_questions.html', 
+                                     topic=topic,
+                                     ai_response=ai_response)
+        
+        except Exception as e:
+            flash(f'문제 생성 중 오류가 발생했습니다: {str(e)}')
+            return render_template('generate_questions.html')
+    
+    return render_template('generate_questions.html')
+
+@app.route('/chatgpt/analyze_results', methods=['GET', 'POST'])
+def analyze_results():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+    
+    if request.method == 'POST':
+        exam_id = request.form.get('exam_id')
+        
+        if not exam_id:
+            flash('시험을 선택해주세요.')
+            return render_template('analyze_results.html')
+        
+        # 시험 결과 데이터 수집
+        results = Result.query.filter_by(exam_id=exam_id).all()
+        exam = db.session.get(Exam, exam_id)
+        
+        if not results:
+            flash('해당 시험의 결과가 없습니다.')
+            return render_template('analyze_results.html')
+        
+        # 결과 분석을 위한 데이터 준비
+        scores = [r.score for r in results]
+        avg_score = sum(scores) / len(scores)
+        max_score = max(scores)
+        min_score = min(scores)
+        
+        analysis_data = {
+            'exam_title': exam.title,
+            'total_students': len(results),
+            'average_score': round(avg_score, 2),
+            'max_score': max_score,
+            'min_score': min_score,
+            'score_distribution': {
+                '90-100': len([s for s in scores if s >= 90]),
+                '80-89': len([s for s in scores if 80 <= s < 90]),
+                '70-79': len([s for s in scores if 70 <= s < 80]),
+                '60-69': len([s for s in scores if 60 <= s < 70]),
+                '0-59': len([s for s in scores if s < 60])
+            }
+        }
+        
+        try:
+            # ChatGPT로 결과 분석 요청
+            prompt = f"""
+            다음 시험 결과를 분석하고 개선 방안을 제시해주세요:
+            
+            시험명: {analysis_data['exam_title']}
+            응시자 수: {analysis_data['total_students']}명
+            평균 점수: {analysis_data['average_score']}점
+            최고 점수: {analysis_data['max_score']}점
+            최저 점수: {analysis_data['min_score']}점
+            
+            점수 분포:
+            - 90-100점: {analysis_data['score_distribution']['90-100']}명
+            - 80-89점: {analysis_data['score_distribution']['80-89']}명
+            - 70-79점: {analysis_data['score_distribution']['70-79']}명
+            - 60-69점: {analysis_data['score_distribution']['60-69']}명
+            - 0-59점: {analysis_data['score_distribution']['0-59']}명
+            
+            이 결과를 바탕으로 교육적 개선 방안을 제시해주세요.
+            """
+            
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "당신은 교육 평가 전문가입니다. 시험 결과를 분석하고 개선 방안을 제시해주세요."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=1500,
+                temperature=0.7
+            )
+            
+            ai_analysis = response.choices[0].message.content
+            
+            return render_template('analyze_results.html', 
+                                 analysis_data=analysis_data,
+                                 ai_analysis=ai_analysis)
+        
+        except Exception as e:
+            flash(f'결과 분석 중 오류가 발생했습니다: {str(e)}')
+            return render_template('analyze_results.html')
+    
+    # GET 요청 시 시험 목록 제공
+    exams = Exam.query.all()
+    return render_template('analyze_results.html', exams=exams)
 
 # ✅ DB 생성 + 서버 실행
 if __name__ == '__main__':

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 문제 생성</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .form-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .form-group button {
+            background: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .form-group button:hover {
+            background: #218838;
+        }
+        .questions-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .question-item {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+        .question-number {
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+        .choice {
+            margin: 5px 0;
+            padding: 5px;
+            background: #f8f9fa;
+            border-radius: 3px;
+        }
+        .correct-answer {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #007bff;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .raw-response {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{{ url_for('admin_dashboard') }}" class="back-link">← 관리자 대시보드로 돌아가기</a>
+        
+        <div class="form-section">
+            <h1>🤖 AI 문제 생성</h1>
+            <form method="POST">
+                <div class="form-group">
+                    <label for="topic">주제:</label>
+                    <input type="text" name="topic" id="topic" value="{{ topic or '' }}" placeholder="예: 파이썬 기초, 수학, 영어 문법..." required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="num_questions">문제 개수:</label>
+                    <select name="num_questions" id="num_questions">
+                        <option value="3">3개</option>
+                        <option value="5" selected>5개</option>
+                        <option value="10">10개</option>
+                        <option value="15">15개</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="difficulty">난이도:</label>
+                    <select name="difficulty" id="difficulty">
+                        <option value="쉬움">쉬움</option>
+                        <option value="보통" selected>보통</option>
+                        <option value="어려움">어려움</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit">문제 생성하기</button>
+                </div>
+            </form>
+        </div>
+        
+        {% if questions_data %}
+        <div class="questions-section">
+            <h2>생성된 문제</h2>
+            {% for question in questions_data %}
+            <div class="question-item">
+                <div class="question-number">문제 {{ question.question_number }}</div>
+                <div class="choice">① {{ question.choice1 }}</div>
+                <div class="choice">② {{ question.choice2 }}</div>
+                <div class="choice">③ {{ question.choice3 }}</div>
+                <div class="choice">④ {{ question.choice4 }}</div>
+                <div class="choice">⑤ {{ question.choice5 }}</div>
+                <div class="choice correct-answer">정답: {{ question.answer }}번</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        {% if ai_response %}
+        <div class="questions-section">
+            <h3>AI 응답 (원본)</h3>
+            <div class="raw-response">{{ ai_response }}</div>
+        </div>
+        {% endif %}
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+</body>
+</html> 
