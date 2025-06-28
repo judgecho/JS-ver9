@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>시험 편집</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <style>
         .question-table {
@@ -642,6 +643,7 @@
         // AJAX 번호 변경 스크립트
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.number-input').forEach(function(input) {
+                // change 이벤트 (값 변경 시)
                 input.addEventListener('change', function() {
                     const qid = this.dataset.qid;
                     const examId = this.dataset.examId;
@@ -668,6 +670,15 @@
                         console.error('AJAX 오류:', error);
                         alert('번호 변경 중 오류가 발생했습니다.');
                     });
+                });
+                
+                // keydown 이벤트 (엔터 방지)
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.blur(); // 포커스 아웃하여 change 이벤트 발생
+                    }
                 });
             });
         });
