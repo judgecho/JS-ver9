@@ -233,56 +233,31 @@ def edit_exam(exam_id):
         # 문항 번호 변경 처리
         if request.form.get('change_numbers'):
             print("=== 번호 변경 시작 ===")
-            number_changes = {}
             
-            # 변경된 번호 수집
+            # 모든 문항의 새 번호를 수집
+            new_numbers = {}
             for q in questions:
                 new_number = request.form.get(f'number_{q.id}')
                 if new_number and new_number.isdigit():
-                    new_number = int(new_number)
-                    if new_number != q.question_number:
-                        number_changes[q.id] = new_number
-                        print(f"문항 {q.id}: 기존 번호 {q.question_number} -> 새 번호 {new_number}")
+                    new_numbers[q.id] = int(new_number)
+                    print(f"문항 {q.id}: 새 번호 {new_number}")
             
-            if number_changes:
-                print(f"변경된 번호: {number_changes}")
+            if new_numbers:
+                # 번호를 오름차순으로 정렬하여 순차적으로 할당
+                sorted_questions = sorted(new_numbers.items(), key=lambda x: x[1])
                 
-                # 새로운 번호 할당 로직
-                # 1. 변경된 번호들을 먼저 할당
-                # 2. 나머지 문항들을 1부터 시작해서 연이어 할당 (이미 사용된 번호는 건너뛰기)
-                
-                # 모든 문항의 새 번호를 저장할 딕셔너리
-                final_numbers = {}
-                
-                # 변경된 번호들을 먼저 할당
-                for q_id, new_number in number_changes.items():
-                    final_numbers[q_id] = new_number
-                
-                # 사용된 번호들 수집
-                used_numbers = set(final_numbers.values())
-                
-                # 나머지 문항들을 1부터 시작해서 연이어 할당
-                next_number = 1
-                for q in questions:
-                    if q.id not in final_numbers:
-                        # 이미 사용된 번호는 건너뛰기
-                        while next_number in used_numbers:
-                            next_number += 1
-                        final_numbers[q.id] = next_number
-                        next_number += 1
-                
-                # 최종 번호 할당
-                for q_id, new_number in final_numbers.items():
+                # 1부터 시작하여 순차적으로 번호 할당
+                for i, (q_id, _) in enumerate(sorted_questions, 1):
                     q = Question.query.get(q_id)
                     if q:
-                        print(f"문항 {q_id} 번호 변경: {q.question_number} -> {new_number}")
-                        q.question_number = new_number
+                        old_number = q.question_number
+                        q.question_number = i
+                        print(f"문항 {q_id} 번호 변경: {old_number} -> {i}")
                 
                 db.session.commit()
-                print("데이터베이스 커밋 완료")
-                
-                # 번호 변경 후 배점은 그대로 유지 (자동 재계산하지 않음)
-                print("번호 변경 완료 - 배점은 그대로 유지")
+                print("번호 변경 완료 - 순차적 넘버링 적용")
+            else:
+                print("변경할 번호가 없습니다.")
         
         # 수동 배점 변경 감지 및 자동 조정
         manual_scores = {}
