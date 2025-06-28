@@ -230,38 +230,51 @@ def edit_exam(exam_id):
     questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
     
     if request.method == 'POST':
-        print("=== 번호 변경 시작 ===")
+        print("=== 폼 제출 시작 ===")
+        
+        # 번호 변경이 있는지 확인
+        has_number_changes = False
         new_numbers = {}
         for q in questions:
             new_number = request.form.get(f'number_{q.id}')
             if new_number and new_number.isdigit():
-                new_numbers[q.id] = int(new_number)
-        # 번호 변경 적용
-        for q in questions:
-            if q.id in new_numbers:
-                print(f"문항 {q.id} 번호 변경: {q.question_number} -> {new_numbers[q.id]}")
-                q.question_number = new_numbers[q.id]
-        # 번호를 오름차순으로 정렬 후 1부터 연속 부여
-        questions_sorted = sorted(questions, key=lambda x: x.question_number)
-        for idx, q in enumerate(questions_sorted, 1):
-            q.question_number = idx
-        print("번호 변경 완료 - 순차적 넘버링 적용")
+                new_number_int = int(new_number)
+                if new_number_int != q.question_number:
+                    has_number_changes = True
+                    new_numbers[q.id] = new_number_int
+        
+        # 번호 변경이 있을 때만 순차적 넘버링 적용
+        if has_number_changes:
+            print("번호 변경 감지 - 순차적 넘버링 적용")
+            # 번호 변경 적용
+            for q in questions:
+                if q.id in new_numbers:
+                    print(f"문항 {q.id} 번호 변경: {q.question_number} -> {new_numbers[q.id]}")
+                    q.question_number = new_numbers[q.id]
+            # 번호를 오름차순으로 정렬 후 1부터 연속 부여
+            questions_sorted = sorted(questions, key=lambda x: x.question_number)
+            for idx, q in enumerate(questions_sorted, 1):
+                q.question_number = idx
+            print("번호 변경 완료 - 순차적 넘버링 적용")
+        else:
+            print("번호 변경 없음 - 기존 번호 유지")
 
         # 문항 내용 및 배점 업데이트
         for q in questions:
-            q.choice1 = request.form.get(f'choice1_{q.id}', '')
-            q.choice2 = request.form.get(f'choice2_{q.id}', '')
-            q.choice3 = request.form.get(f'choice3_{q.id}', '')
-            q.choice4 = request.form.get(f'choice4_{q.id}', '')
-            q.choice5 = request.form.get(f'choice5_{q.id}', '')
-            q.answer = request.form.get(f'answer_{q.id}', '')
-            score_key = f'score_{q.id}'
-            if score_key in request.form:
-                try:
-                    q.score = float(request.form[score_key])
-                except Exception:
-                    q.score = 0
-
+            # 정답 업데이트
+            answer = request.form.get(f'answer_{q.id}', '').strip()
+            if answer != q.answer:
+                print(f"문항 {q.id} 정답 변경: {q.answer} -> {answer}")
+                q.answer = answer
+            
+            # 배점 업데이트
+            score = request.form.get(f'score_{q.id}')
+            if score and score.replace('.', '').isdigit():
+                new_score = float(score)
+                if new_score != q.score:
+                    print(f"문항 {q.id} 배점 변경: {q.score} -> {new_score}")
+                    q.score = round(new_score, 1)
+        
         # 기본 배점 일괄 변경 요청이 있을 때만 적용
         if 'update_default_score' in request.form:
             try:
@@ -276,35 +289,9 @@ def edit_exam(exam_id):
             # 총점은 항상 현재 문항 배점의 합으로 자동 갱신
             exam.total_score = round(sum(q.score for q in questions), 1)
             print(f"총점 자동 갱신: {exam.total_score}")
-
-        exam.title = request.form['title']
-        exam.category = request.form.get('category', '기타')
-
-        # 문항 수 변경 처리 (기존 로직 유지)
-        if 'update_question_count' in request.form:
-            new_question_count = int(request.form.get('question_count', len(questions)))
-            current_question_count = len(questions)
-            if new_question_count != current_question_count:
-                print(f"문항 수 변경: {current_question_count}개 → {new_question_count}개")
-                Question.query.filter_by(exam_id=exam_id).delete()
-                default_score = exam.total_score / new_question_count if new_question_count > 0 else 0
-                for i in range(1, new_question_count + 1):
-                    q = Question(
-                        exam_id=exam.id,
-                        question_number=i,
-                        choice1='보기 1',
-                        choice2='보기 2',
-                        choice3='보기 3',
-                        choice4='보기 4',
-                        choice5='보기 5',
-                        answer='',
-                        score=round(default_score, 1)
-                    )
-                    db.session.add(q)
-                print(f"새로운 문항 {new_question_count}개 생성 완료, 문항당 {default_score:.1f}점")
-                questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
+        
         db.session.commit()
-        flash('시험이 성공적으로 업데이트되었습니다.', 'success')
+        flash('시험이 성공적으로 저장되었습니다.', 'success')
         return redirect(url_for('edit_exam', exam_id=exam_id))
     return render_template(
         'edit_exam.html',
