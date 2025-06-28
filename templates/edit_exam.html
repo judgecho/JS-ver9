@@ -656,19 +656,23 @@
                         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                         body: `qid=${qid}&new_number=${newNumber}&exam_id=${examId}`
                     })
-                    .then(res => res.json())
+                    .then(res => {
+                        console.log('AJAX 응답 상태:', res.status);
+                        return res.json();
+                    })
                     .then(data => {
+                        console.log('AJAX 응답 데이터:', data);
                         if (data.success) {
-                            console.log('번호 변경 성공');
+                            console.log('번호 변경 성공:', data.message);
                             location.reload();
                         } else {
-                            console.log('번호 변경 실패');
-                            alert('번호 변경 실패');
+                            console.log('번호 변경 실패:', data.message);
+                            alert('번호 변경 실패: ' + data.message);
                         }
                     })
                     .catch(error => {
                         console.error('AJAX 오류:', error);
-                        alert('번호 변경 중 오류가 발생했습니다.');
+                        alert('번호 변경 중 오류가 발생했습니다: ' + error.message);
                     });
                 });
                 

@@ -578,20 +578,33 @@ def download_sample_exam():
 
 @app.route('/api/update_question_number', methods=['POST'])
 def update_question_number():
-    qid = int(request.form['qid'])
-    new_number = int(request.form['new_number'])
-    exam_id = int(request.form['exam_id'])
-    q = Question.query.get(qid)
-    if q:
-        q.question_number = new_number
-        db.session.commit()
-        # 번호 충돌 방지: 같은 시험 내에서 중복 번호가 있으면 정렬해서 1부터 재부여
-        questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
-        for idx, q in enumerate(questions, 1):
-            q.question_number = idx
-        db.session.commit()
-        return jsonify({'success': True})
-    return jsonify({'success': False}), 400
+    try:
+        qid = int(request.form['qid'])
+        new_number = int(request.form['new_number'])
+        exam_id = int(request.form['exam_id'])
+        
+        print(f"AJAX 번호 변경 요청: qid={qid}, new_number={new_number}, exam_id={exam_id}")
+        
+        q = Question.query.get(qid)
+        if q:
+            old_number = q.question_number
+            q.question_number = new_number
+            db.session.commit()
+            
+            # 번호 충돌 방지: 같은 시험 내에서 중복 번호가 있으면 정렬해서 1부터 재부여
+            questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
+            for idx, q in enumerate(questions, 1):
+                q.question_number = idx
+            db.session.commit()
+            
+            print(f"AJAX 번호 변경 성공: {old_number} -> {new_number}")
+            return jsonify({'success': True, 'message': '번호 변경 완료'})
+        else:
+            print(f"AJAX 번호 변경 실패: 문항 {qid}를 찾을 수 없음")
+            return jsonify({'success': False, 'message': '문항을 찾을 수 없습니다.'}), 400
+    except Exception as e:
+        print(f"AJAX 번호 변경 오류: {str(e)}")
+        return jsonify({'success': False, 'message': f'오류가 발생했습니다: {str(e)}'}), 500
 
 # ✅ DB 생성 + 서버 실행
 if __name__ == '__main__':
