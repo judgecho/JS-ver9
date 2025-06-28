@@ -255,6 +255,9 @@ def edit_exam(exam_id):
             
             db.session.commit()
             print("번호 변경 완료 - 순차적 넘버링 적용")
+            
+            # 번호 변경 후 questions 리스트 다시 로드
+            questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
         else:
             print("변경할 번호가 없습니다.")
         
@@ -361,8 +364,12 @@ def edit_exam(exam_id):
         flash('시험이 성공적으로 업데이트되었습니다.', 'success')
         return redirect(url_for('edit_exam', exam_id=exam_id))
     
-    return render_template('edit_exam.html', exam=exam, questions=questions, 
-                         default_score_per_question=round(100 / len(questions), 1) if questions else 0)
+    return render_template(
+        'edit_exam.html',
+        exam=exam,
+        questions=Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all(),
+        default_score_per_question=round(100 / len(questions), 1) if questions else 0
+    )
 
 @app.route('/logs')
 def view_logs():

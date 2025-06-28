@@ -239,7 +239,7 @@
     <div class="container">
         <h1>시험 편집: {{ exam.title }}</h1>
         
-        <form method="POST">
+        <form method="post" onsubmit="return false;">
             <div>
                 <label>시험 제목:</label>
                 <input type="text" name="title" value="{{ exam.title }}" required>
@@ -303,7 +303,7 @@
             </div>
             
             <div class="action-buttons">
-                <button type="submit">저장</button>
+                <button type="submit" onclick="this.form.onsubmit=null; this.form.submit();">저장</button>
             </div>
             
             <div class="table-responsive">
@@ -317,7 +317,7 @@
                     {% for q in questions %}
                     <tr data-qid="{{ q.id }}">
                         <td class="number-col" style="text-align: center;">
-                            <input type="number" name="number_{{ q.id }}" value="{{ q.question_number or loop.index }}" class="number-input">
+                            <input type="number" name="number_{{ q.id }}" value="{{ q.question_number }}" class="number-input">
                         </td>
                         <td class="choices-col">
                           <div class="choices-edit answer-choices" data-qid="{{q.id}}">
@@ -350,7 +350,7 @@
             </div>
             
             <div class="action-buttons">
-                <button type="submit">저장</button>
+                <button type="submit" onclick="this.form.onsubmit=null; this.form.submit();">저장</button>
             </div>
         </form>
         
@@ -403,6 +403,19 @@
                             radio.checked = false;
                         }
                     });
+                });
+            });
+            
+            // 정답 입력란에서 엔터 시 다음 정답 입력란으로 이동 (폼 submit 방지)
+            const answerInputs = Array.from(document.querySelectorAll('.answer-input'));
+            answerInputs.forEach((input, idx) => {
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (idx < answerInputs.length - 1) {
+                            answerInputs[idx + 1].focus();
+                        }
+                    }
                 });
             });
         });
