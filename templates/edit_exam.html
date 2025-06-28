@@ -303,7 +303,6 @@
             </div>
             
             <div class="action-buttons">
-                <button type="submit" name="change_numbers" class="change-numbers-btn">번호 변경 적용</button>
                 <button type="submit">저장</button>
             </div>
             
@@ -351,7 +350,6 @@
             </div>
             
             <div class="action-buttons">
-                <button type="submit" name="change_numbers" class="change-numbers-btn">번호 변경 적용</button>
                 <button type="submit">저장</button>
             </div>
         </form>
@@ -588,57 +586,4 @@
                 return;
             }
             
-            if (confirm(`문항 수를 ${currentCount}개에서 ${newCount}개로 변경하시겠습니까?\n\n⚠️ 기존 문항들의 내용과 배점이 모두 삭제됩니다.`)) {
-                // 폼에 문항 수 변경 플래그 추가
-                const form = document.querySelector('form');
-                const flagInput = document.createElement('input');
-                flagInput.type = 'hidden';
-                flagInput.name = 'update_question_count';
-                flagInput.value = 'true';
-                form.appendChild(flagInput);
-                
-                // 폼 제출
-                form.submit();
-            }
-        }
-        
-        // 기본 배점 변경 함수
-        function updateDefaultScore() {
-            const newDefault = parseFloat(document.getElementById('newDefaultScore').value);
-            if (isNaN(newDefault) || newDefault <= 0) {
-                alert('기본 배점은 0보다 커야 합니다.');
-                return;
-            }
-            const scoreInputs = document.querySelectorAll('input[name^="score_"]');
-            scoreInputs.forEach(input => {
-                input.value = newDefault;
-                input.style.backgroundColor = '#fff3cd';
-                input.style.borderColor = '#ffc107';
-            });
-            setTimeout(() => {
-                scoreInputs.forEach(input => {
-                    input.style.backgroundColor = '';
-                    input.style.borderColor = '';
-                });
-            }, 1000);
-            updateTotalScore();
-            const infoDisplay = document.querySelector('.scoring-info .info');
-            if (infoDisplay) {
-                infoDisplay.textContent = `✅ 모든 문항의 배점이 ${newDefault}점으로 변경되었습니다. 저장을 누르면 총점도 자동으로 맞춰집니다.`;
-                infoDisplay.style.color = 'green';
-            }
-            // 총점도 자동으로 맞추기 위한 hidden input 추가
-            const form = document.querySelector('form');
-            let totalInput = document.getElementById('newTotalScoreInput');
-            if (!totalInput) {
-                totalInput = document.createElement('input');
-                totalInput.type = 'hidden';
-                totalInput.id = 'newTotalScoreInput';
-                totalInput.name = 'new_total_score';
-                form.appendChild(totalInput);
-            }
-            totalInput.value = (scoreInputs.length * newDefault).toFixed(1);
-        }
-    </script>
-</body>
-</html>
+            if (confirm(`

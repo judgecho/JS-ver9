@@ -230,34 +230,33 @@ def edit_exam(exam_id):
     questions = Question.query.filter_by(exam_id=exam_id).order_by(Question.question_number).all()
     
     if request.method == 'POST':
-        # 문항 번호 변경 처리
-        if request.form.get('change_numbers'):
-            print("=== 번호 변경 시작 ===")
+        # 문항 번호 변경 처리 (자동 적용)
+        print("=== 번호 변경 시작 ===")
+        
+        # 모든 문항의 새 번호를 수집
+        new_numbers = {}
+        for q in questions:
+            new_number = request.form.get(f'number_{q.id}')
+            if new_number and new_number.isdigit():
+                new_numbers[q.id] = int(new_number)
+                print(f"문항 {q.id}: 새 번호 {new_number}")
+        
+        if new_numbers:
+            # 번호를 오름차순으로 정렬하여 순차적으로 할당
+            sorted_questions = sorted(new_numbers.items(), key=lambda x: x[1])
             
-            # 모든 문항의 새 번호를 수집
-            new_numbers = {}
-            for q in questions:
-                new_number = request.form.get(f'number_{q.id}')
-                if new_number and new_number.isdigit():
-                    new_numbers[q.id] = int(new_number)
-                    print(f"문항 {q.id}: 새 번호 {new_number}")
+            # 1부터 시작하여 순차적으로 번호 할당
+            for i, (q_id, _) in enumerate(sorted_questions, 1):
+                q = Question.query.get(q_id)
+                if q:
+                    old_number = q.question_number
+                    q.question_number = i
+                    print(f"문항 {q_id} 번호 변경: {old_number} -> {i}")
             
-            if new_numbers:
-                # 번호를 오름차순으로 정렬하여 순차적으로 할당
-                sorted_questions = sorted(new_numbers.items(), key=lambda x: x[1])
-                
-                # 1부터 시작하여 순차적으로 번호 할당
-                for i, (q_id, _) in enumerate(sorted_questions, 1):
-                    q = Question.query.get(q_id)
-                    if q:
-                        old_number = q.question_number
-                        q.question_number = i
-                        print(f"문항 {q_id} 번호 변경: {old_number} -> {i}")
-                
-                db.session.commit()
-                print("번호 변경 완료 - 순차적 넘버링 적용")
-            else:
-                print("변경할 번호가 없습니다.")
+            db.session.commit()
+            print("번호 변경 완료 - 순차적 넘버링 적용")
+        else:
+            print("변경할 번호가 없습니다.")
         
         # 수동 배점 변경 감지 및 자동 조정
         manual_scores = {}
